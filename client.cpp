@@ -7,6 +7,9 @@
 #include <fstream>
 #include <vector>
 
+class Client{
+    
+}
 int main(){
     int sock = socket(AF_INET, SOCK_STREAM, 0);
 
