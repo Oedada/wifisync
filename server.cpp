@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <iostream>
+#include <vector>
 
 int main(){
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -15,7 +16,8 @@ int main(){
     sockaddr_in client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
 
-    bind(server_fd, (sockaddr*)&addr, sizeof(addr));
+    if(bind(server_fd, (sockaddr*)&addr, sizeof(addr)) == 0) std::cout << "Bind succesfully \n";
+    else std::cout << "Not binded \n";
     listen(server_fd, 1);
 
     std::cout << "Начиниаю принимать соединения... \n";
@@ -27,6 +29,12 @@ int main(){
 
     std::cout << "Client addres: " << ip << ":" << ntohs(client_addr.sin_port);
     
+    std::cout << std::endl;
+    ssize_t n;
+    std::vector<char> buf(4096);
+    while((n = recv(client_fd, buf.data(), buf.size(), 0)) > 0){
+        std::cout.write(buf.data(), n);
+    }
     close(client_fd);
     close(server_fd);
     return 0;
