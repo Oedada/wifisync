@@ -69,7 +69,7 @@ int main(){
     std::cout << ftr.client_ip << ":" << ftr.client_port << std::endl;
     ssize_t n;
     std::vector<char> buffer(4096);
-    std::ofstream fout("out", std::ios::binary);
+    std::ofstream fout("data/out", std::ios::binary);
     while((n = ftr.recv(buffer)) > 0){
         fout.write(buffer.data(), n);
     }

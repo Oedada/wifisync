@@ -41,7 +41,7 @@ class Client{
 int main(){
     Client ftr(12345, "192.168.0.101");
     ftr.connect_server();
-    std::ifstream fin("test_out_text.txt", std::ios::binary);
+    std::ifstream fin("data/test_out_text.txt", std::ios::binary);
     std::vector<char> buffer(8192);
     while(fin.read(buffer.data(), buffer.size()) || fin.gcount() > 0){
         ftr.send(buffer, fin.gcount());

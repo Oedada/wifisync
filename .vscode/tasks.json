@@ -9,7 +9,7 @@
                 "-g",
                 "${file}",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
+                "/home/oedada/Projects/apps/Wifisync/wifisync/binary/${fileBasenameNoExtension}"
             ],
             "group": {
                 "kind": "build",
