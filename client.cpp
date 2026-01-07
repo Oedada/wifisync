@@ -10,7 +10,7 @@ int main(){
     sockaddr_in addr{};
     addr.sin_port = htons(12345);
     addr.sin_family = AF_INET;
-    inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+    inet_pton(AF_INET, "192.168.0.101", &addr.sin_addr);
 
     if(connect(sock, (sockaddr*)&addr, sizeof(addr)) == 0) std::cout << "succes";
     else std::cout << "Not connected";
