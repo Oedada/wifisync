@@ -17,7 +17,7 @@ class Server{
         int client_port;
         Server(int p) : server_port(p){
             server_fd = socket(AF_INET, SOCK_STREAM, 0);
-            if(server_fd != -1){throw std::runtime_error("Error with create new socket for server\n");}
+            if(server_fd == -1){throw std::runtime_error("Error with create new socket for server\n");}
             server_addr.sin_port = htons(server_port);
             server_addr.sin_family = AF_INET;
             server_addr.sin_addr.s_addr = INADDR_ANY;
