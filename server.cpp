@@ -1,3 +1,4 @@
+#include <fstream>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -28,12 +29,14 @@ int main(){
     inet_ntop(AF_INET, &client_addr.sin_addr, ip,sizeof(ip));
 
     std::cout << "Client addres: " << ip << ":" << ntohs(client_addr.sin_port);
-    
     std::cout << std::endl;
+
+
     ssize_t n;
-    std::vector<char> buf(4096);
+    std::vector<char> buf(8192);
+    std::ofstream fout("out", std::ios::binary);
     while((n = recv(client_fd, buf.data(), buf.size(), 0)) > 0){
-        std::cout.write(buf.data(), n);
+        fout.write(buf.data(), n);
     }
     close(client_fd);
     close(server_fd);

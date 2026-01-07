@@ -3,6 +3,9 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <iostream>
+#include <ios>
+#include <fstream>
+#include <vector>
 
 int main(){
     int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -15,8 +18,12 @@ int main(){
     if(connect(sock, (sockaddr*)&addr, sizeof(addr)) == 0) std::cout << "Connected succesfully \n";
     else std::cout << "Not connected";
 
-    std::string msg = "Hi from client";
-    send(sock, msg.c_str(), msg.size(), 0);
+    std::vector<char> buf(8192);
+    std::ifstream fin("client_file.txt", std::ios::binary);
+
+    while(fin.read(buf.data(), buf.size()) || fin.gcount() > 0){
+        send(sock, buf.data(), fin.gcount(), 0);
+    }
 
     close(sock);
 }
