@@ -31,7 +31,7 @@ class Units{
             if(is_registred(adp)){
                 throw std::runtime_error(std::string("Unit ") + adp.string() + " is already registred");
             }
-            create_json_file_list(adp, units_list[dp]);
+            create_json_file_list(adp, units_list[adp]);
         }
 
         void get_unit(const fs::path p, json &unit){
