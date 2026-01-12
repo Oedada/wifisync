@@ -13,7 +13,7 @@ class Client{
         const int server_port;
         const std::string server_ip;
 
-        Client(int port,const std::string &ip) : server_port(port), server_ip(ip){
+        Client(const int port,const std::string &ip) : server_port(port), server_ip(ip){
             client_sock = socket(AF_INET, SOCK_STREAM, 0);
             client_addr.sin_port = htons(server_port);
             client_addr.sin_family = AF_INET;
@@ -21,11 +21,13 @@ class Client{
         }
         
         void connect_server(){
-            if(::connect(client_sock, (sockaddr*)&client_addr, sizeof(client_addr)) != 0){throw std::runtime_error("Error with connect to server");}
+            if(::connect(client_sock, (sockaddr*)&client_addr, sizeof(client_addr)) != 0){
+                throw std::runtime_error("Error with connect to server");
+            }
         }
 
-        void send(std::vector<char> &buf, size_t n){
-            ::send(client_sock, buf.data(), n, 0);
+        void send(const std::vector<char> &buf, const size_t size){
+            ::send(client_sock, buf.data(), size, 0);
         }
 
         ~Client(){

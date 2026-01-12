@@ -15,7 +15,7 @@ class Server{
         const int server_port;
         std::string client_ip;
         int client_port;
-        Server(int p) : server_port(p){
+        Server(const int port) : server_port(port){
             server_fd = socket(AF_INET, SOCK_STREAM, 0);
             if(server_fd == -1){throw std::runtime_error("Error with create new socket for server\n");}
             server_addr.sin_port = htons(server_port);
@@ -26,16 +26,22 @@ class Server{
         void bind_sock(){
             int opt = 1;
             setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-            if(::bind(server_fd, (sockaddr*)&server_addr, sizeof(server_addr)) != 0){throw std::runtime_error("Port not binded \n");}
+            if(::bind(server_fd, (sockaddr*)&server_addr, sizeof(server_addr)) != 0){
+                throw std::runtime_error("Port not binded \n");
+            }
         }
 
         void listen_addr(){
-            if(::listen(server_fd, SOMAXCONN) != 0){throw std::runtime_error("Error with prepare on accept connections\n");}
+            if(::listen(server_fd, SOMAXCONN) != 0){
+                throw std::runtime_error("Error with prepare on accept connections\n");
+            }
         }
 
         void accept_conn(){
             client_fd = ::accept(server_fd, (sockaddr*)&client_addr, &client_addr_len);
-            if(client_fd == -1){throw std::runtime_error("Error with accept connection\n");}
+            if(client_fd == -1){
+                throw std::runtime_error("Error with accept connection\n");
+            }
             char ip[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, &client_addr.sin_addr, ip,sizeof(ip));
             client_ip = ip;

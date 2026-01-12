@@ -13,7 +13,7 @@ class Units{
 
         fs::path json_path;
         json units_list;
-        Units(fs::path jp) : json_path(jp){
+        Units(const fs::path jp) : json_path(jp){
             if(!fs::exists(json_path)){
                 std::ofstream fout(json_path, std::ios::out);
                 fout.write("{}", 2);
@@ -23,14 +23,18 @@ class Units{
             fin >> units_list;
         }
 
-        void set_unit(fs::path dp){
-            dp = fs::absolute(dp);
-            if(!fs::exists(dp)){throw std::runtime_error(std::string("Directory ") + dp.string() + " not exists");}
-            if(is_registred(dp)){throw std::runtime_error(std::string("Unit ") + dp.string() + " is already registred");}
-                create_json_file_list(dp, units_list[dp]);
+        void set_unit(const fs::path &dp){
+            fs::path adp = fs::absolute(dp);
+            if(!fs::exists(adp)){
+                throw std::runtime_error(std::string("Directory ") + adp.string() + " not exists");
+            } 
+            if(is_registred(adp)){
+                throw std::runtime_error(std::string("Unit ") + adp.string() + " is already registred");
+            }
+            create_json_file_list(adp, units_list[dp]);
         }
 
-        void get_unit(fs::path p, json &unit){
+        void get_unit(const fs::path p, json &unit){
             json *pointer;
             if(get_unit_from_path(p, pointer))
                 unit = *pointer;
@@ -38,13 +42,13 @@ class Units{
                 throw std::runtime_error("This unit not registred");
         }
 
-        void rm_unit(fs::path dp){
+        void rm_unit(const fs::path dp){
             json* parent;
             get_unit_from_path(dp.parent_path().string(), parent);
             parent->erase(dp.filename().c_str());
         }
 
-        bool is_registred(fs::path p){
+        bool is_registred(const fs::path p){
             json* pointer;
             return get_unit_from_path(p, pointer);
         }
@@ -57,11 +61,11 @@ class Units{
 
     private:
 
-        bool get_unit_from_path(std::string p, json* &unit_path_part_pointer){
-            p = fs::absolute(p).string();
+        bool get_unit_from_path(const std::string &p, json* &unit_path_part_pointer){
+            std::string ap = fs::absolute(p).string();
             std::string path_in_units;
             for( auto& [key, value] : units_list.items()){
-                auto pos = p.find(key);
+                auto pos = ap.find(key);
                 if(pos != std::string::npos && pos == 0){
                     path_in_units = key;
                 }
@@ -70,7 +74,7 @@ class Units{
                 std::cerr << "Путь не зарегестрирован в системе\n";
                 return false;
             }
-            std::string path_without_root = p;
+            std::string path_without_root = ap;
             path_without_root.erase(0, path_in_units.size());
             unit_path_part_pointer = &units_list[path_in_units];
             for(auto &part : fs::path(path_without_root)){
@@ -88,7 +92,7 @@ class Units{
 
         }
 
-        void create_json_file_list(fs::path path, json& json_field){
+        void create_json_file_list(const fs::path path, json& json_field){
             std::vector<fs::path> units;
             if(fs::is_directory(path)){
                 if(fs::is_empty(path))
