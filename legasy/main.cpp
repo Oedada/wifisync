@@ -1,19 +1,22 @@
 #include <filesystem>
-#include <iostream>
-#include <vector>
 #include <fstream>
-#include <map>
-#include <nlohmann/json.hpp>
-#include <stdexcept>
-using json = nlohmann::json;
+#include <iostream>
+#include "nlohmann/json.hpp"
 
+using json = nlohmann::json;
+namespace fs = std::filesystem;
+
+bool get_json(fs::path &p, json &file){
+    std::ifstream fin("/home/oedada/Projects/apps/Wifisync/wifisync/data/files.json");
+    json json_tree = json(fin);
+
+}
 
 int main(){
-    json dict = {
-        {"name", "Alice"},
-        {"age", 25},
-        {"city", "Berlin"}
-    };
-    dict.erase("jjj");
-    return 0;
+    fs::path true_path = "/home/oedada/Projects/apps/Wifisync/wifisync/data/train/Brewery";
+    fs::path wrong_path = "/home/oedada/Projects/apps/Wifisync/wifisync/data/train/Brewery";
+
+    for(auto &part : p){
+        std::cout << part.string();
+    }
 }
