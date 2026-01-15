@@ -1,10 +1,9 @@
 #include <cstddef>
-#include <iostream>
 #include <openssl/evp.h>
 #include <stdexcept>
 #include <vector>
 #include <string>
-#include "hash.hpp"
+#include "headers/hash.hpp"
 
 Hash::Hash() : is_finalized(false) {
     if((mdctx = EVP_MD_CTX_new()) == NULL){
@@ -56,12 +55,3 @@ Hash::~Hash(){
         EVP_MD_CTX_free(mdctx);
     }
 }
-
-// int main(){
-//     Hash h;
-//     std::string hello = "hello";
-//     std::vector<unsigned char> msg(hello.begin(), hello.end());
-//     h.update(msg);
-//     h.calculate();
-//     std::cout << h.to_hex();
-// }

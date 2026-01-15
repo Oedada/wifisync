@@ -5,8 +5,8 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
-#include "hash.hpp"
-#include "files_opers.hpp"
+#include "headers/hash.hpp"
+#include "headers/files_opers.hpp"
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -155,31 +155,15 @@ namespace fs = std::filesystem;
         if(fs::is_directory(path)){
             if(fs::is_empty(path)){
                 json_field["/type"] = "empty_dir";
-                json_field["/hash"] = "future_hash";
             }
             else {
                 json_field["/type"] = "dir";
-                json_field["/hash"] = "future_hash";
-                for(const fs::path& entry: fs::directory_iterator(path))
+                for(const fs::path& entry: fs::directory_iterator(path)){
                     create_json_file_list(entry, json_field[entry.filename().c_str()], false);
+                }
             }
         }
         else if(fs::is_regular_file(path)){
             json_field["/type"] = "file";
-            json_field["/hash"] = "future_hash";
         }
     }
-
-int main(){
-    Units plugins("data/files.json");
-    plugins.set_unit("data/train", true);
-    plugins.rm_unit("data/train/HiddenArmor");
-    std::cout << plugins.is_registred("data/train/lol33");
-    std::cout << plugins.is_registred("data/train/spark");
-    json configs;
-    plugins.get_unit("data/train", configs);
-    std::string json_string = configs.dump();
-    std::ofstream fout("data/test.json");
-    fout.write(json_string.c_str(), json_string.size());
-    return 0;
-}
