@@ -5,6 +5,8 @@
 #include "headers/files_opers.hpp"
 #include "headers/client.hpp"
 #include "headers/server.hpp"
+#include "headers/x25519.hpp"
+#include "headers/ed25519.hpp"
 
 using json = nlohmann::json;
 
@@ -54,6 +56,27 @@ void test_server(){
     }
 }
 
+void test_x25519(){
+    X25519 client;
+    X25519 server;
+    client.calculate_secret(server.pub_key);
+    server.calculate_secret(client.pub_key);
+    std::cout << equal_secrets(server.secret, client.secret, server.secret_len) << "\n";
+}
+
+void test_ed25519(){
+    Ed25519 test("data/keys");
+    unsigned char lol[] = "lol";
+    test.sign(lol, 3);
+    std::cout << check_sig("data/keys/ed25519_pub.pem", lol, 3, test.sig, 64);
+}
+
 int main(){
+    std::cout << "Working" << "\n";
+    X25519 client;
+    X25519 server;
+    client.calculate_secret(server.pub_key);
+    server.calculate_secret(client.pub_key);
+    std::cout << equal_secrets(server.secret, client.secret, server.secret_len) << "\n";
     return 0;
 }
