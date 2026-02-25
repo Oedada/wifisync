@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <openssl/rand.h>
 #include "headers/hash.hpp"
 #include "headers/files_opers.hpp"
 #include "headers/client.hpp"
@@ -71,12 +72,34 @@ void test_ed25519(){
     std::cout << check_sig("data/keys/ed25519_pub.pem", lol, 3, test.sig, 64);
 }
 
-int main(){
-    std::cout << "Working" << "\n";
+std::vector<unsigned char> gen_random_bytes(size_t len) {
+    std::vector<unsigned char> buf(len);
+    if(RAND_bytes(buf.data(), static_cast<int>(len)) != 1) {
+        throw std::runtime_error("Failed to generate random bytes");
+    }
+    return buf;
+}
+
+void test_x_ed_25519(){
     X25519 client;
     X25519 server;
     client.calculate_secret(server.pub_key);
     server.calculate_secret(client.pub_key);
-    std::cout << equal_secrets(server.secret, client.secret, server.secret_len) << "\n";
+    std::cout << "Xsecrets is equal: " <<  equal_secrets(server.secret, client.secret, server.secret_len) << "\n";
+    Ed25519 test("data/keys");
+    std::vector<unsigned char> msg;
+    msg.insert(msg.end(), std::begin(server.pub_key), std::end(server.pub_key));
+    msg.insert(msg.end(), std::begin(client.pub_key), std::end(client.pub_key));
+    std::vector<unsigned char> randc = gen_random_bytes(32);
+    std::vector<unsigned char> rands = gen_random_bytes(32);
+    msg.insert(msg.end(), randc.begin(), randc.end());
+    msg.insert(msg.end(), rands.begin(), rands.end());
+    test.sign(msg.data(), msg.size());
+    std::cout << check_sig("data/keys/ed25519_pub.pem", msg.data(), msg.size(), test.sig, 64);
+}
+
+
+int main(){
+    std::cout << "Working" << "\n";
     return 0;
 }

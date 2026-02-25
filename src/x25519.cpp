@@ -41,10 +41,10 @@ void X25519::set_other_pub_key(unsigned char *other_key){
 }
 
 void X25519::calculate_secret(unsigned char *other_key){
-    // if(secret == nullptr){
-    //     std::cerr << secret << "\n";
-    //     throw std::logic_error("Cannot change peer key after secret is derived");
-    // }
+    if(secret != nullptr){
+        std::cerr << secret << "\n";
+        throw std::logic_error("Cannot change peer key after secret is derived");
+    }
     set_other_pub_key(other_key);
     EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(own_key_pair, nullptr);
     if (!ctx) {
