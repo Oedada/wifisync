@@ -17,6 +17,6 @@ class X25519{
         void get_pub_key();
         void gen_pair_keys();
         void set_other_pub_key(unsigned char *other_key);
-        EVP_PKEY *own_key_pair;
-        EVP_PKEY *other_pub_key_pair;
+        EVP_PKEY *own_key_pair = nullptr;
+        EVP_PKEY *other_pub_key_pair = nullptr;
 };

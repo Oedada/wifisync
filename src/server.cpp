@@ -3,9 +3,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <vector>
 #include <stdexcept>
-
 #include "headers/server.hpp"
 
 
@@ -31,7 +29,9 @@
             }
         }
 
-        void Server::accept_conn(){
+        TCPSocket Server::accept_conn(){
+            bind_sock();
+            listen_addr();
             client_fd = ::accept(server_fd, (sockaddr*)&client_addr, &client_addr_len);
             if(client_fd == -1){
                 throw std::runtime_error("Error with accept connection\n");
@@ -40,14 +40,11 @@
             inet_ntop(AF_INET, &client_addr.sin_addr, ip,sizeof(ip));
             client_ip = ip;
             client_port = ntohs(client_addr.sin_port);
-        }
-
-        ssize_t Server::receive(std::vector<char> &buf){
-            return ::recv(client_fd, buf.data(), buf.size(), 0);
+            return TCPSocket(client_fd);
         }
 
         Server::~Server(){
-            if(client_fd != -1)
-                ::close(client_fd);
-            ::close(server_fd);
+            if (server_fd >= 0)
+                ::close(server_fd);
         }
+

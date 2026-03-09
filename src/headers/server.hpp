@@ -1,8 +1,8 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <vector>
 #include <string>
+#include "TCPSocket.hpp"
 
 class Server{
     public:
@@ -13,13 +13,12 @@ class Server{
         int client_port;
 
         Server(const int port);
-        void bind_sock();
-        void listen_addr();
-        void accept_conn();
-        ssize_t receive(std::vector<char> &buf);
+        TCPSocket accept_conn();
         ~Server();
 
     private:
+        void bind_sock();
+        void listen_addr();
         int server_fd;
         sockaddr_in server_addr{};
         int client_fd = -1;

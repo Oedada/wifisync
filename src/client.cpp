@@ -2,7 +2,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <vector>
 #include <stdexcept>
 #include "headers/client.hpp"
 
@@ -13,16 +12,9 @@
             inet_pton(AF_INET, server_ip.c_str(), &client_addr.sin_addr);
         }
         
-    void Client::connect_server(){
+    TCPSocket Client::connect_server(){
         if(::connect(client_sock, (sockaddr*)&client_addr, sizeof(client_addr)) != 0){
             throw std::runtime_error("Error with connect to server");
         }
-    }
-
-    void Client::send(const std::vector<char> &buf, const size_t size){
-        ::send(client_sock, buf.data(), size, 0);
-    }
-
-    Client::~Client(){
-        ::close(client_sock);
+        return TCPSocket(client_sock);
     }

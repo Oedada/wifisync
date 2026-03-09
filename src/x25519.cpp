@@ -21,10 +21,8 @@ void X25519::gen_pair_keys(){
 }
 
 void X25519::get_pub_key(){
+    if(!own_key_pair) throw std::runtime_error("No key generated");
     size_t len = key_lenght;
-    if(len != key_lenght){
-        throw std::runtime_error("Cannot put public key to buffer smaller than 32");
-    }
     EVP_PKEY_get_raw_public_key(own_key_pair, pub_key, &len);
 }
 
@@ -60,9 +58,9 @@ void X25519::calculate_secret(unsigned char *other_key){
 }
 
 X25519::~X25519() {
-    if (own_key_pair) EVP_PKEY_free(own_key_pair);
-    if (other_pub_key_pair) EVP_PKEY_free(other_pub_key_pair);
-    if (secret) OPENSSL_free(secret);
+    if (own_key_pair) { EVP_PKEY_free(own_key_pair); own_key_pair = nullptr; }
+    if (other_pub_key_pair) { EVP_PKEY_free(other_pub_key_pair); other_pub_key_pair = nullptr; }
+    if (secret) { OPENSSL_free(secret); secret = nullptr; }
 }
 
 bool equal_secrets(unsigned char *s1, unsigned char *s2, size_t len){
