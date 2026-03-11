@@ -1,5 +1,5 @@
 CXX = clang++
-CXXFLAGS = -std=c++20 -Wall -Wextra
+CXXFLAGS = -std=c++20 -Wall -Wextra -pthread
 LDLIBS = -lssl -lcrypto
 
 SRCS = $(wildcard src/*.cpp)

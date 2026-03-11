@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <fstream>
 #include <filesystem>
@@ -142,7 +141,7 @@ void test_x_ed_25519_file_trans(int argc, char** argv){
 }
 
 
-int main(int argc, char** argv){
-    std::cout << "Working" << "\n";
-    return 0;
-}
+// int main(int argc, char** argv){
+//     std::cout << "Working" << "\n";
+//     return 0;
+// }
