@@ -13,6 +13,7 @@ class Server{
         int client_port;
 
         Server(const int port);
+        bool is_ready_to_accept();
         TCPSocket accept_conn();
         ~Server();
 

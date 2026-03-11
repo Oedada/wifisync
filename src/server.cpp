@@ -29,6 +29,23 @@
             }
         }
 
+        bool Server::is_ready_to_accept(){
+            fd_set readfds;
+            FD_ZERO(&readfds);
+            FD_SET(server_fd, &readfds);
+
+            struct timeval timeout;
+            timeout.tv_sec = 0;
+            timeout.tv_usec = 0;
+            
+            int ret = select(server_fd + 1, &readfds, nullptr, nullptr, &timeout);
+
+            if(ret > 0 && FD_ISSET(server_fd, &readfds)){
+                return true;
+            }
+            return false;
+        }
+
         TCPSocket Server::accept_conn(){
             bind_sock();
             listen_addr();

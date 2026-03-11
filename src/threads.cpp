@@ -1,89 +1,186 @@
+#include <chrono>
+#include <exception>
 #include <iostream>
-#include <fstream>
+#include <map>
 #include <openssl/rand.h>
-#include <vector>
-#include "headers/hash.hpp"
-#include "headers/files_opers.hpp"
 #include "headers/client.hpp"
 #include "headers/server.hpp"
 #include "headers/x25519.hpp"
 #include "headers/ed25519.hpp"
+#include <stdexcept>
+#include <variant>
 #include "headers/TCPSocket.hpp"
 #include <thread>
 #include <mutex>
+#include <queue>
 #include "external_libs/cpp-httplib/httplib.h"
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
+using Arg = std::variant<bool, int, std::string>;
 
-int counter = 0;
-std::mutex m;
+enum class Tasks{
+    StartServer,
+    Connect,
+    SendTest
+};
+
+
+struct Command{
+    Tasks task;
+    std::vector<Arg> args;
+};
+
+class SafeCmdQueue{
+    private:
+        std::queue<Command> queue;
+        std::mutex m;
+        std::condition_variable cv;
+    public:
+        void add(Command cmd){
+            std::unique_lock<std::mutex> lock(m);
+            queue.push(cmd);
+            cv.notify_one();
+        }
+
+        Command get(){
+            std::unique_lock<std::mutex> lock(m);
+            cv.wait(lock, [this](){return !queue.empty();});
+            Command front_el = std::move(queue.front());
+            queue.pop();
+            return front_el;
+        }
+};
+
+SafeCmdQueue cmd_q;
+std::map<std::string, Tasks> str_to_tasks{
+    {"start_server", Tasks::StartServer},
+    {"connect", Tasks::Connect}, 
+    {"send", Tasks::SendTest}
+};
+
 
 void server() {
-    X25519 server;
-    std::vector<char> pub_key_vector(
-        std::begin(server.pub_key),
-        std::end(server.pub_key)
-    );
-    std::cout << "Server pubkey: " << "\n";
-    for(int i = 0; i < 32; i++){
-        std::cout << server.pub_key[i];
-    }
-    std::cout << "\n";
     Server ftr(12345);
-    TCPSocket s = ftr.accept_conn();
-    std::cout << ftr.client_ip << ":" << ftr.client_port << std::endl;
-    s.smart_send(pub_key_vector);
-    std::ofstream fout("data/client_pub_key.pem", std::ios::binary);
-    std::vector<unsigned char> client_pub_key = s.smart_recv();
-    fout.write(reinterpret_cast<char*>(client_pub_key.data()), client_pub_key.size());
     while(true){
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-        std::cout << "Server working" << "\n";
+        if(ftr.is_ready_to_accept()){
+            TCPSocket s = ftr.accept_conn();
+            std::cout << "Client info - " << ftr.client_ip << ":" << ftr.client_port << std::endl;
+        }
     }
 }
 
 void client(const int server_port,const std::string &server_ip){
-    X25519 client;
-    std::vector<char> pub_key_vector(
-        std::begin(client.pub_key),
-        std::end(client.pub_key)
-    );
-    std::cout << "Client pubkey: " << "\n";
-    for(int i = 0; i < 32; i++){
-        std::cout << pub_key_vector[i];
-    }
-    std::cout << "\n";
     Client ftr(server_port, server_ip);
     TCPSocket s = ftr.connect_server();
-    s.smart_send(pub_key_vector);
-    std::ofstream fout("data/server_pub_key.pem", std::ios::binary);
-    std::vector<unsigned char> client_pub_key = s.smart_recv();
-    fout.write(reinterpret_cast<char*>(client_pub_key.data()), client_pub_key.size());
-
+    while(true){
+        std::cout << "Client don't off" << "\n";
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+    }
 }
 
-void get_requests(int port){
+int parse_task_json(json j, Command& cmd){
+    try{
+        if(!j.at("args").is_array() || !j.at("cmd").is_string()){
+            throw std::runtime_error("Type of json field not correct");
+        }
+        cmd.task = str_to_tasks.at(j.at("cmd"));
+        for(const nlohmann::basic_json<> & arg: j.at("args")){
+            if(arg.is_boolean()){
+                cmd.args.push_back(arg.get<bool>());
+            }
+            else if(arg.is_number_integer()){
+                cmd.args.push_back(arg.get<int>());
+            }
+            else if(arg.is_string()){
+                cmd.args.push_back(arg.get<std::string>());
+            }
+            else{
+                std::cerr << std::string("Type of argument not correct: ") + std::string(arg);
+                throw std::runtime_error(std::string("Type of argument not correct: "));
+            }
+        }
+        return 200;
+    }
+    catch(json::out_of_range &e){
+        return 400;
+    }
+}
+
+void get_tasks(const httplib::Request& req, httplib::Response& res){
+    try{
+        json json_body = json::parse(req.body);
+        res.set_content(json_body.dump(), "application/json");
+        Command cmd;
+        int status = parse_task_json(json_body, cmd);
+        if(status == 200){
+            res.status = 200;
+            res.set_content("Task received", "plain/text");
+            for(auto arg: cmd.args){
+                std::visit([](auto&& val){std::cout << val << "\n";}, arg);
+            }
+            cmd_q.add(cmd);
+        }
+    }
+    catch(const std::exception& e){
+        res.status = 400;
+        res.set_content(std::string("\"error\":\"") + e.what() + "\"", "application/json");
+    }
+}
+
+void http_server(int port){
     httplib::Server svr;
 
     // GET /hello
-    svr.Get("/hello", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content("Hello from C++ server!", "text/plain");
+    svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
+        res.set_content("Wifisync http server's working", "text/plain");
     });
 
-    std::cout << "Server running on http://localhost:" << port << "\n";
+    svr.Post("/tasks", get_tasks);
+
+    std::cout << "Server running on http://127.0.0.1:" << port << "\n";
     svr.listen("127.0.0.1", port); // блокирующий вызов
 }
 
+//-----------//
+//Thread work//
+//-----------//
+
+void thread_worker(){
+    std::thread client_thread;
+    while(true){
+        Command cmd = cmd_q.get();
+        if(cmd.task == Tasks::Connect){
+
+            if(cmd.args.size() != 2){
+                throw std::runtime_error("Should be two args in connect function");
+            }
+            if(auto ip_ptr = std::get_if<std::string>(&cmd.args[0])){
+                std::string ip = *ip_ptr;
+                if(auto port_prt = std::get_if<int>(&cmd.args[1])){
+                   int port = *port_prt;
+                   client_thread = std::thread(client, port, ip);
+                }
+                else{
+                    throw std::runtime_error("Port don't int");
+                }
+            }
+            else{
+                throw std::runtime_error("Ip don't string");
+            }
+        }
+    }
+    if (client_thread.joinable()) {
+       client_thread.join();
+    }
+}
+
 int main() {
-
     std::thread server_thread(server);
-    std::thread client_thread(client, 12345, "192.168.0.104");
-    std::thread api_thread(get_requests, 5000);
-
+    std::thread api_thread(http_server, 5000);
+    std::thread thread_work_thread(thread_worker);
+    
     api_thread.join();
+    thread_work_thread.join();
     server_thread.join();
-    client_thread.join();
-
-    std::cout << counter << "\n";
 }
