@@ -175,12 +175,12 @@ void thread_worker(){
     }
 }
 
-int main() {
-    std::thread server_thread(server);
-    std::thread api_thread(http_server, 5000);
-    std::thread thread_work_thread(thread_worker);
+// int main() {
+//     std::thread server_thread(server);
+//     std::thread api_thread(http_server, 5000);
+//     std::thread thread_work_thread(thread_worker);
     
-    api_thread.join();
-    thread_work_thread.join();
-    server_thread.join();
-}
+//     api_thread.join();
+//     thread_work_thread.join();
+//     server_thread.join();
+// }
