@@ -14,9 +14,11 @@ class UdpBroadcast{
             sock = socket(AF_INET, SOCK_DGRAM, 0);
             addr.sin_family = AF_INET;
             addr.sin_port = htons(port);
-            std::string broadcast_addr;
+            std::string broadcast_addr = "255.255.255.255";
             inet_pton(AF_INET, broadcast_addr.c_str(), &addr.sin_addr);
             bind(sock, (sockaddr*)&addr, sizeof(addr));
+            int enable = 1;
+            setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &enable, sizeof(enable));
         }
         void send_msg(){
             const char* msg = "hello";
