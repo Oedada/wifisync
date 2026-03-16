@@ -1,30 +1,32 @@
 #include <iostream>
 #include <cstring>
+#include <stdexcept>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 
 
-char MagicMessage[] = "Wifisync Hello World";
+const char MagicMessage[] = "Wifisync Hello World";
 
 class UdpBroadcast{
     public:
         int port;
-        int sock;
+        int broadcast_sock;
         sockaddr_in addr{};
         UdpBroadcast(int p) : port(p){
-            sock = socket(AF_INET, SOCK_DGRAM, 0);
+            broadcast_sock = socket(AF_INET, SOCK_DGRAM, 0);
             addr.sin_family = AF_INET;
             addr.sin_port = htons(port);
             std::string broadcast_addr = "255.255.255.255";
             inet_pton(AF_INET, broadcast_addr.c_str(), &addr.sin_addr);
-            bind(sock, (sockaddr*)&addr, sizeof(addr));
+            if(bind(broadcast_sock, (sockaddr*)&addr, sizeof(addr)) != 0){
+                throw std::runtime_error("Can't bind broadcast sock to addr");
+            }
             int enable = 1;
-            setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &enable, sizeof(enable));
+            setsockopt(broadcast_sock, SOL_SOCKET, SO_BROADCAST, &enable, sizeof(enable));
         }
         void send_msg(){
-            const char* msg = "hello";
-            sendto(sock, msg, strlen(msg), 0,(sockaddr*)&addr, sizeof(addr));
+            sendto(broadcast_sock, MagicMessage, strlen(MagicMessage), 0,(sockaddr*)&addr, sizeof(addr));
         }
 
         void recieve(){
@@ -32,7 +34,7 @@ class UdpBroadcast{
             sockaddr_in sender{};
             socklen_t sender_len = sizeof(sender);
 
-            ssize_t n = recvfrom(sock, buf, sizeof(buf)-1, 0,(sockaddr*)&sender, &sender_len);
+            ssize_t n = recvfrom(broadcast_sock, buf, sizeof(buf)-1, 0,(sockaddr*)&sender, &sender_len);
             if (n > 0) {
                 buf[n] = '\0';
                 if(std::strcmp(MagicMessage, buf) == 0){
