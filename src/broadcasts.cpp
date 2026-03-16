@@ -70,17 +70,21 @@ class UdpBroadcast{
                 sockaddr_in tmp_addr;
                 socklen_t sender_len = sizeof(other_addr);
                 ssize_t n = recvfrom(broadcast_sock, buf, sizeof(buf)-1, 0,(sockaddr*)&tmp_addr, &sender_len);
+                std::cout << buf << "\n";
                 if (n > 0) {
+                    if(std::strcmp(MagicResponse, buf) == 0){
+                        std::cout << "lol" << "\n";
+                    }
                     if(tmp_addr.sin_addr.s_addr != own_addr.sin_addr.s_addr){
                         std::cout << "Received" << "\n";
                         buf[n] = '\0';
-                        std::cout << buf << "\n";
                         if(std::strcmp(MagicMessage, buf) == 0){
                                 other_addr = tmp_addr;
                                 send_msg(MagicResponse, sizeof(MagicResponse));
                                 return true;
                         }
                         else if(std::strcmp(MagicResponse, buf) == 0){
+
                                 other_addr = tmp_addr;
                                 return true;
                         }
@@ -98,9 +102,11 @@ class UdpBroadcast{
 
 int main() {
     UdpBroadcast b(12345);
-    while(!b.recieve()){
-        b.send_msg(MagicMessage, sizeof(MagicMessage));
-    }
+    // while(!b.recieve()){
+    //     b.send_msg(MagicMessage, sizeof(MagicMessage));
+    // }
+    b.send_msg(MagicResponse, sizeof(MagicResponse));
+    while(!b.recieve()){b.send_msg(MagicResponse, sizeof(MagicResponse));}
     char ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &b.other_addr.sin_addr, ip, sizeof(ip));
     std::cout << "Other Ip: " << ip << "\n";
