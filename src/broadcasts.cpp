@@ -31,8 +31,8 @@ class UdpBroadcast{
             setsockopt(broadcast_sock, SOL_SOCKET, SO_BROADCAST, &enable, sizeof(enable));
             get_own_ip();
         }
-        void send_msg(){
-            sendto(broadcast_sock, MagicMessage, strlen(MagicMessage), 0,(sockaddr*)&broadcast_addr, sizeof(broadcast_addr));
+        void send_msg(const char* msg, size_t s){
+            sendto(broadcast_sock, msg, s, 0,(sockaddr*)&broadcast_addr, sizeof(broadcast_addr));
         }
 
         void get_own_ip(){
@@ -75,6 +75,7 @@ class UdpBroadcast{
                     if(std::strcmp(MagicMessage, buf) == 0){
                         if(tmp_addr.sin_addr.s_addr != own_addr.sin_addr.s_addr){
                             other_addr = tmp_addr;
+                            send_msg(MagicResponse, sizeof(MagicResponse));
                             return true;
                         }
                     }
@@ -96,10 +97,10 @@ class UdpBroadcast{
 };
 
 
-int main(int argc, char** argv) {
+int main() {
     UdpBroadcast b(12345);
     while(!b.recieve()){
-        b.send_msg();
+        b.send_msg(MagicMessage, sizeof(MagicMessage));
     }
     char ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &b.other_addr.sin_addr, ip, sizeof(ip));
