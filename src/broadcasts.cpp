@@ -1,54 +1,88 @@
+#include <cstddef>
 #include <iostream>
 #include <cstring>
+#include <netinet/in.h>
 #include <stdexcept>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 
 
-const char MagicMessage[] = "Wifisync Hello World";
+const char MagicMessage[] = "Wifisync Hello Wifi";
 
 class UdpBroadcast{
     public:
-        int port;
+        int broadcast_port;
         int broadcast_sock;
-        sockaddr_in addr{};
-        UdpBroadcast(int p) : port(p){
+        sockaddr_in broadcast_addr{};
+        sockaddr_in other_addr{};
+        sockaddr_in own_addr{};
+        UdpBroadcast(int p) : broadcast_port(p){
             broadcast_sock = socket(AF_INET, SOCK_DGRAM, 0);
-            addr.sin_family = AF_INET;
-            addr.sin_port = htons(port);
-            std::string broadcast_addr = "255.255.255.255";
-            inet_pton(AF_INET, broadcast_addr.c_str(), &addr.sin_addr);
-            if(bind(broadcast_sock, (sockaddr*)&addr, sizeof(addr)) != 0){
+            broadcast_addr.sin_family = AF_INET;
+            broadcast_addr.sin_port = htons(broadcast_port);
+            std::string broadcast_ip = "255.255.255.255";
+            inet_pton(AF_INET, broadcast_ip.c_str(), &broadcast_addr.sin_addr);
+            if(bind(broadcast_sock, (sockaddr*)&broadcast_addr, sizeof(broadcast_addr)) != 0){
                 throw std::runtime_error("Can't bind broadcast sock to addr");
             }
             int enable = 1;
             setsockopt(broadcast_sock, SOL_SOCKET, SO_BROADCAST, &enable, sizeof(enable));
+            get_own_ip();
         }
         void send_msg(){
-            sendto(broadcast_sock, MagicMessage, strlen(MagicMessage), 0,(sockaddr*)&addr, sizeof(addr));
+            sendto(broadcast_sock, MagicMessage, strlen(MagicMessage), 0,(sockaddr*)&broadcast_addr, sizeof(broadcast_addr));
         }
 
-        void recieve(){
-            char buf[1024];
-            sockaddr_in sender{};
-            socklen_t sender_len = sizeof(sender);
+        void get_own_ip(){
+            int tmp_sock = socket(AF_INET, SOCK_DGRAM, 0);
+            sockaddr_in tmp_addr{};
+            tmp_addr.sin_family = AF_INET;
+            tmp_addr.sin_port = htons(53);
+            inet_pton(AF_INET, "8.8.8.8", &tmp_addr.sin_addr);
 
-            ssize_t n = recvfrom(broadcast_sock, buf, sizeof(buf)-1, 0,(sockaddr*)&sender, &sender_len);
-            if (n > 0) {
-                buf[n] = '\0';
-                if(std::strcmp(MagicMessage, buf) == 0){
-                    char ip[INET_ADDRSTRLEN];
-                    inet_ntop(AF_INET, &sender.sin_addr, ip, sizeof(ip));
+            connect(tmp_sock, (sockaddr*)&tmp_addr, sizeof(tmp_addr));
+            socklen_t own_addr_size = sizeof(own_addr); 
+            getsockname(tmp_sock, (sockaddr*)&own_addr, &own_addr_size);
+        }
 
-                    std::cout << "Sender IP: " << ip << std::endl;
-                    std::cout << "Sender Port: " << ntohs(sender.sin_port) << std::endl;
-                }
-                else{
-                    std::cout << "Wrong" << "\n";
-                }
+        bool is_ready_to_recv(){
+            fd_set readfds;
+            FD_ZERO(&readfds);
+            FD_SET(broadcast_sock, &readfds);
+
+            struct timeval timeout;
+            timeout.tv_sec = 0;
+            timeout.tv_usec = 200000;
+            
+            int ret = select(broadcast_sock + 1, &readfds, nullptr, nullptr, &timeout);
+
+            if(ret > 0 && FD_ISSET(broadcast_sock, &readfds)){
+                return true;
             }
+            return false;
         }
+
+        bool recieve(){
+            if(is_ready_to_recv()){
+                char buf[1024];
+                sockaddr_in tmp_addr;
+                socklen_t sender_len = sizeof(other_addr);
+                ssize_t n = recvfrom(broadcast_sock, buf, sizeof(buf)-1, 0,(sockaddr*)&tmp_addr, &sender_len);
+                if (n > 0) {
+                    buf[n] = '\0';
+                    if(std::strcmp(MagicMessage, buf) == 0){
+                        if(tmp_addr.sin_addr.s_addr != own_addr.sin_addr.s_addr){
+                            other_addr = tmp_addr;
+                            return true;
+                        }
+                    }
+                }
+
+            }
+            return false;
+        }
+
         ~UdpBroadcast(){ 
             close(broadcast_sock);
         }
@@ -57,16 +91,7 @@ class UdpBroadcast{
 
 int main(int argc, char** argv) {
     UdpBroadcast b(12345);
-    bool server = false;
-    if(argc > 1){
-        if(argv[1][0] == 's'){
-            server = true;
-        }
-    }
-    if(!server){
+    while(!b.recieve()){
         b.send_msg();
-    }
-    else{
-        b.recieve();
     }
 }
