@@ -31,7 +31,7 @@ class UdpBroadcast{
             socklen_t sender_len = sizeof(sender);
 
             ssize_t n = recvfrom(sock, buf, sizeof(buf)-1, 0,(sockaddr*)&sender, &sender_len);
-
+            std::cout << "ok";
             if (n > 0) {
                 buf[n] = '\0';
                 std::cout << "Message: " << buf << std::endl;
