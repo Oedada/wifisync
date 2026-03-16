@@ -9,6 +9,7 @@
 
 
 const char MagicMessage[] = "Wifisync Hello Wifi";
+const char MagicResponse[] = "Wifisync Response Wifi";
 
 class UdpBroadcast{
     public:
@@ -77,8 +78,14 @@ class UdpBroadcast{
                             return true;
                         }
                     }
-                }
+                    else if(std::strcmp(MagicResponse, buf) == 0){
+                        if(tmp_addr.sin_addr.s_addr != own_addr.sin_addr.s_addr){
+                            other_addr = tmp_addr;
+                            return true;
+                        }
+                    }
 
+                }
             }
             return false;
         }
@@ -94,4 +101,8 @@ int main(int argc, char** argv) {
     while(!b.recieve()){
         b.send_msg();
     }
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &b.other_addr.sin_addr, ip, sizeof(ip));
+    std::cout << "Other Ip: " << ip << "\n";
+    std::cout << "Other Port: " << b.other_addr.sin_port << "\n";
 }
