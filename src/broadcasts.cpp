@@ -101,6 +101,7 @@ int main() {
     UdpBroadcast b(12345);
     while(!b.recieve()){
         b.send_msg(MagicMessage, sizeof(MagicMessage));
+        std::cout << "work";
     }
     char ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &b.other_addr.sin_addr, ip, sizeof(ip));
