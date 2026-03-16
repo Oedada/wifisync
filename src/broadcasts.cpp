@@ -72,6 +72,7 @@ class UdpBroadcast{
                 socklen_t sender_len = sizeof(tmp_addr);
                 ssize_t n = recvfrom(broadcast_sock, buf, sizeof(buf)-1, 0,(sockaddr*)&tmp_addr, &sender_len);
                 if (n > 0) {
+                    std::cout << "Aga";
                     if(std::strcmp(MagicResponse, buf) == 0){
                         std::cout << "lol" << "\n";
                     }
