@@ -26,9 +26,22 @@ class UdpBroadcast{
         }
 
         void recieve(){
-             char buf[1024];
-            recv(sock, buf, sizeof(buf), 0);
-            std::cout << buf << std::endl;
+            char buf[1024];
+            sockaddr_in sender{};
+            socklen_t sender_len = sizeof(sender);
+
+            ssize_t n = recvfrom(sock, buf, sizeof(buf)-1, 0,(sockaddr*)&sender, &sender_len);
+
+            if (n > 0) {
+                buf[n] = '\0';
+                std::cout << "Message: " << buf << std::endl;
+
+                char ip[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, &sender.sin_addr, ip, sizeof(ip));
+
+                std::cout << "Sender IP: " << ip << std::endl;
+                std::cout << "Sender Port: " << ntohs(sender.sin_port) << std::endl;
+            }
         }
         ~UdpBroadcast(){ 
             close(sock);
