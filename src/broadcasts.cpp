@@ -5,6 +5,8 @@
 #include <unistd.h>
 
 
+char MagicMessage[] = "Wifisync Hello World";
+
 class UdpBroadcast{
     public:
         int port;
@@ -33,13 +35,16 @@ class UdpBroadcast{
             ssize_t n = recvfrom(sock, buf, sizeof(buf)-1, 0,(sockaddr*)&sender, &sender_len);
             if (n > 0) {
                 buf[n] = '\0';
-                std::cout << "Message: " << buf << std::endl;
+                if(std::strcmp(MagicMessage, buf) == 0){
+                    char ip[INET_ADDRSTRLEN];
+                    inet_ntop(AF_INET, &sender.sin_addr, ip, sizeof(ip));
 
-                char ip[INET_ADDRSTRLEN];
-                inet_ntop(AF_INET, &sender.sin_addr, ip, sizeof(ip));
-
-                std::cout << "Sender IP: " << ip << std::endl;
-                std::cout << "Sender Port: " << ntohs(sender.sin_port) << std::endl;
+                    std::cout << "Sender IP: " << ip << std::endl;
+                    std::cout << "Sender Port: " << ntohs(sender.sin_port) << std::endl;
+                }
+                else{
+                    std::cout << "Wrong" << "\n";
+                }
             }
         }
         ~UdpBroadcast(){ 
