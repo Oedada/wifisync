@@ -50,7 +50,7 @@ class UdpBroadcast{
             }
         }
         ~UdpBroadcast(){ 
-            close(sock);
+            close(broadcast_sock);
         }
 };
 
