@@ -44,31 +44,31 @@ struct ConnectData{
 
 int TCP_PORT = 12345;
 
-TCPSocket create_connect(ConnectData data){
-  if(data.m == Mode::Server){
-    Server ftr(TCP_PORT);
-    while(true){
-      //TODO: добавить таймаут
-        if(ftr.is_ready_to_accept()){
-            TCPSocket s = ftr.accept_conn();
-            if(ftr.client_ip == data.ip){
-              return s;
-            }
-            else{
-              std::cerr << "Ip doesn't correct";
-            }
-        }
-    }
-  }
-  else if(data.m == Mode::Client){
-    Client ftr(data.port, data.ip);
-    TCPSocket s = ftr.connect_server();
-    return s;
-  }
-  else{
-    throw std::runtime_error("Unkown mode");
-  }
-}
+// TCPSocket create_connect(ConnectData data){
+//   if(data.m == Mode::Server){
+//     Server ftr(TCP_PORT);
+//     while(true){
+//       //TODO: добавить таймаут
+//         if(ftr.is_ready_to_accept()){
+//             TCPSocket s = ftr.accept_conn();
+//             if(ftr.client_ip == data.ip){
+//               return s;
+//             }
+//             else{
+//               std::cerr << "Ip doesn't correct";
+//             }
+//         }
+//     }
+//   }
+//   else if(data.m == Mode::Client){
+//     Client ftr(data.port, data.ip);
+//     TCPSocket s = ftr.connect_server();
+//     return s;
+//   }
+//   else{
+//     throw std::runtime_error("Unkown mode");
+//   }
+// }
 
 class SafeCmdQueue{
     private:
