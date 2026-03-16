@@ -31,7 +31,7 @@ class UdpBroadcast{
             local_addr.sin_family = AF_INET;
             local_addr.sin_port = htons(PORT);
             inet_pton(AF_INET, "0.0.0.0", &local_addr.sin_addr);
-            if(bind(broadcast_sock, (sockaddr*)&local_addr, sizeof(local_addr)) != 0){
+            if(bind(broadcast_sock, (sockaddr*)&broadcast_addr, sizeof(broadcast_addr)) != 0){
                 throw std::runtime_error("Can't bind broadcast sock to addr");
             }
             int enable = 1;
@@ -107,7 +107,7 @@ int main() {
     UdpBroadcast b(12345);
     while(!b.recieve()){
         b.send_msg(MagicMessage, strlen(MagicMessage));
-        usleep(200000);
+        // usleep(200000);
     }
     char ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &b.other_addr.sin_addr, ip, sizeof(ip));
