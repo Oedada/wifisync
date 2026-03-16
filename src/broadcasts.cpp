@@ -36,8 +36,18 @@ class UdpBroadcast{
 };
 
 
-int main() {
+int main(int argc, char** argv) {
     UdpBroadcast b(12345);
-    b.send_msg();
-    b.recieve();
+    bool server = false;
+    if(argc > 1){
+        if(argv[1][0] == 's'){
+            server = true;
+        }
+    }
+    if(!server){
+        b.send_msg();
+    }
+    else{
+        b.recieve();
+    }
 }
