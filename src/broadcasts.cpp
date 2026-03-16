@@ -71,6 +71,7 @@ class UdpBroadcast{
                 socklen_t sender_len = sizeof(other_addr);
                 ssize_t n = recvfrom(broadcast_sock, buf, sizeof(buf)-1, 0,(sockaddr*)&tmp_addr, &sender_len);
                 if (n > 0) {
+                    std::cout << "Received" << "\n";
                     buf[n] = '\0';
                     if(std::strcmp(MagicMessage, buf) == 0){
                         if(tmp_addr.sin_addr.s_addr != own_addr.sin_addr.s_addr){
