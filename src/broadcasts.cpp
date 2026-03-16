@@ -45,6 +45,7 @@ class UdpBroadcast{
             connect(tmp_sock, (sockaddr*)&tmp_addr, sizeof(tmp_addr));
             socklen_t own_addr_size = sizeof(own_addr); 
             getsockname(tmp_sock, (sockaddr*)&own_addr, &own_addr_size);
+            close(tmp_sock);
         }
 
         bool is_ready_to_recv(){
@@ -68,7 +69,7 @@ class UdpBroadcast{
             if(is_ready_to_recv()){
                 char buf[1024];
                 sockaddr_in tmp_addr;
-                socklen_t sender_len = sizeof(other_addr);
+                socklen_t sender_len = sizeof(tmp_addr);
                 ssize_t n = recvfrom(broadcast_sock, buf, sizeof(buf)-1, 0,(sockaddr*)&tmp_addr, &sender_len);
                 std::cout << buf << "\n";
                 if (n > 0) {
@@ -102,13 +103,11 @@ class UdpBroadcast{
 
 int main() {
     UdpBroadcast b(12345);
-    // while(!b.recieve()){
-    //     b.send_msg(MagicMessage, sizeof(MagicMessage));
-    // }
-    b.send_msg(MagicResponse, sizeof(MagicResponse));
-    while(!b.recieve()){b.send_msg(MagicResponse, sizeof(MagicResponse));}
+    while(!b.recieve()){
+        b.send_msg(MagicMessage, sizeof(MagicMessage));
+    }
     char ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &b.other_addr.sin_addr, ip, sizeof(ip));
+    inet_ntop(AF_INET, &b.own_addr.sin_addr, ip, sizeof(ip));
     std::cout << "Other Ip: " << ip << "\n";
     std::cout << "Other Port: " << b.other_addr.sin_port << "\n";
 }
