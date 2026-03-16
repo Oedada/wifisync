@@ -75,12 +75,12 @@ class UdpBroadcast{
                     if(std::strcmp(MagicResponse, buf) == 0){
                         std::cout << "lol" << "\n";
                     }
-                    char ip[INET_ADDRSTRLEN];
-                    inet_ntop(AF_INET, &tmp_addr.sin_addr, ip, sizeof(ip));
-                    std::cout << "Other ip: " << ip;
-                    inet_ntop(AF_INET, &own_addr.sin_addr, ip, sizeof(ip));
-                    std::cout << "Own ip: " << ip;
                     if(tmp_addr.sin_addr.s_addr != own_addr.sin_addr.s_addr){
+                        char ip[INET_ADDRSTRLEN];
+                        inet_ntop(AF_INET, &tmp_addr.sin_addr, ip, sizeof(ip));
+                        std::cout << "Other ip: " << ip;
+                        inet_ntop(AF_INET, &own_addr.sin_addr, ip, sizeof(ip));
+                        std::cout << "Own ip: " << ip;
                         std::cout << "Received" << "\n";
                         buf[n] = '\0';
                         if(std::strcmp(MagicMessage, buf) == 0){
