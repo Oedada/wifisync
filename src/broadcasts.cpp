@@ -10,6 +10,8 @@
 
 const char MagicMessage[] = "Wifisync Hello Wifi";
 const char MagicResponse[] = "Wifisync Response Wifi";
+const int PORT = 12345;
+const int SLEEP_TIME = 200000;
 
 class UdpBroadcast{
     public:
@@ -47,7 +49,12 @@ class UdpBroadcast{
             tmp_addr.sin_port = htons(53);
             inet_pton(AF_INET, "8.8.8.8", &tmp_addr.sin_addr);
 
-            connect(tmp_sock, (sockaddr*)&tmp_addr, sizeof(tmp_addr));
+            if(connect(tmp_sock, (sockaddr*)&tmp_addr, sizeof(tmp_addr)) != 0){
+                inet_pton(AF_INET, "255.255.255.255", &tmp_addr.sin_addr);
+                if(connect(tmp_sock, (sockaddr*)&tmp_addr, sizeof(tmp_addr)) != 0){
+                    throw std::runtime_error("Can't build route for know own ip");
+                }
+            }
             socklen_t own_addr_size = sizeof(own_addr); 
             getsockname(tmp_sock, (sockaddr*)&own_addr, &own_addr_size);
             close(tmp_sock);
@@ -78,13 +85,12 @@ class UdpBroadcast{
                 ssize_t n = recvfrom(broadcast_sock, buf, sizeof(buf)-1, 0,(sockaddr*)&tmp_addr, &sender_len);
                 if (n > 0) {
                     if(tmp_addr.sin_addr.s_addr != own_addr.sin_addr.s_addr){
-                        if(n == sizeof(MagicMessage) && memcmp(buf, MagicMessage, sizeof(MagicMessage)) == 0){
+                        if(n == strlen(MagicMessage) && memcmp(buf, MagicMessage, strlen(MagicMessage)) == 0){
                                 other_addr = tmp_addr;
                                 sendto(broadcast_sock, MagicResponse, strlen(MagicResponse), 0,(sockaddr*)&other_addr, sizeof(other_addr));
                                 return true;
                         }
-                        else if(n == sizeof(MagicResponse) && memcmp(buf, MagicResponse, sizeof(MagicResponse)) == 0){
-                                std::cout << "Ok";
+                        else if(n == strlen(MagicResponse) && memcmp(buf, MagicResponse, strlen(MagicResponse)) == 0){
                                 other_addr = tmp_addr;
                                 return true;
                         }
@@ -101,11 +107,14 @@ class UdpBroadcast{
 
 
 int main() {
-    UdpBroadcast b(12345);
+    UdpBroadcast b(PORT);
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &b.own_addr.sin_addr, ip, sizeof(ip));
+    std::cout << ip << "\n";
     while(!b.recieve()){
         b.send_msg(MagicMessage, strlen(MagicMessage));
+        usleep(SLEEP_TIME);
     }
-    char ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &b.other_addr.sin_addr, ip, sizeof(ip));
     std::cout << "Other Ip: " << ip << "\n";
     std::cout << "Other Port: " << b.other_addr.sin_port << "\n";
