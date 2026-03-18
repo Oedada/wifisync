@@ -50,7 +50,7 @@ class UdpBroadcast{
             inet_pton(AF_INET, "8.8.8.8", &tmp_addr.sin_addr);
 
             if(connect(tmp_sock, (sockaddr*)&tmp_addr, sizeof(tmp_addr)) != 0){
-                inet_pton(AF_INET, "255.255.255.255", &tmp_addr.sin_addr);
+                inet_pton(AF_INET, "192.0.2.1", &tmp_addr.sin_addr);
                 if(connect(tmp_sock, (sockaddr*)&tmp_addr, sizeof(tmp_addr)) != 0){
                     throw std::runtime_error("Can't build route for know own ip");
                 }
