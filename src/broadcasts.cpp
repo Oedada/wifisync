@@ -18,13 +18,18 @@ class UdpBroadcast{
         sockaddr_in broadcast_addr{};
         sockaddr_in other_addr{};
         sockaddr_in own_addr{};
+        sockaddr_in local_addr{};
         UdpBroadcast(int p) : broadcast_port(p){
             broadcast_sock = socket(AF_INET, SOCK_DGRAM, 0);
+            // broadcast addr
             broadcast_addr.sin_family = AF_INET;
             broadcast_addr.sin_port = htons(broadcast_port);
-            std::string broadcast_ip = "255.255.255.255";
-            inet_pton(AF_INET, broadcast_ip.c_str(), &broadcast_addr.sin_addr);
-            if(bind(broadcast_sock, (sockaddr*)&broadcast_addr, sizeof(broadcast_addr)) != 0){
+            inet_pton(AF_INET, "255.255.255.255", &broadcast_addr.sin_addr);
+            //local addr
+            local_addr.sin_family = AF_INET;
+            local_addr.sin_port = htons(broadcast_port);
+            local_addr.sin_addr.s_addr = INADDR_ANY;
+            if(bind(broadcast_sock, (sockaddr*)&local_addr, sizeof(local_addr)) != 0){
                 throw std::runtime_error("Can't bind broadcast sock to addr");
             }
             int enable = 1;
@@ -73,12 +78,12 @@ class UdpBroadcast{
                 ssize_t n = recvfrom(broadcast_sock, buf, sizeof(buf)-1, 0,(sockaddr*)&tmp_addr, &sender_len);
                 if (n > 0) {
                     if(tmp_addr.sin_addr.s_addr != own_addr.sin_addr.s_addr){
-                        if(std::strcmp(MagicMessage, buf) == 0){
+                        if(n == sizeof(MagicMessage) && memcmp(buf, MagicMessage, sizeof(MagicMessage)) == 0){
                                 other_addr = tmp_addr;
-                                send_msg(MagicResponse, sizeof(MagicResponse));
+                                sendto(broadcast_sock, MagicResponse, strlen(MagicResponse), 0,(sockaddr*)&other_addr, sizeof(other_addr));
                                 return true;
                         }
-                        else if(std::strcmp(MagicResponse, buf) == 0){
+                        else if(n == sizeof(MagicResponse) && memcmp(buf, MagicResponse, sizeof(MagicResponse)) == 0){
                                 std::cout << "Ok";
                                 other_addr = tmp_addr;
                                 return true;
@@ -98,7 +103,7 @@ class UdpBroadcast{
 int main() {
     UdpBroadcast b(12345);
     while(!b.recieve()){
-        b.send_msg(MagicMessage, sizeof(MagicMessage));
+        b.send_msg(MagicMessage, strlen(MagicMessage));
     }
     char ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &b.other_addr.sin_addr, ip, sizeof(ip));
