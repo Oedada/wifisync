@@ -1,4 +1,7 @@
 #include <cstddef>
+#include <cstdint>
+#include <net/if.h>
+#include <ifaddrs.h>
 #include <iostream>
 #include <cstring>
 #include <netinet/in.h>
@@ -16,30 +19,78 @@ const int SLEEP_TIME = 200000;
 class UdpBroadcast{
     public:
         int broadcast_port;
-        int broadcast_sock;
         sockaddr_in broadcast_addr{};
         sockaddr_in other_addr{};
         sockaddr_in own_addr{};
         sockaddr_in local_addr{};
+        int broadcast_sock = socket(AF_INET, SOCK_DGRAM, 0);
         UdpBroadcast(int p) : broadcast_port(p){
-            broadcast_sock = socket(AF_INET, SOCK_DGRAM, 0);
+            // get own addr and broadcast addr
+            get_own_and_brcast_addr(own_addr, broadcast_addr);
             // broadcast addr
             broadcast_addr.sin_family = AF_INET;
             broadcast_addr.sin_port = htons(broadcast_port);
-            inet_pton(AF_INET, "255.255.255.255", &broadcast_addr.sin_addr);
             //local addr
             local_addr.sin_family = AF_INET;
             local_addr.sin_port = htons(broadcast_port);
             local_addr.sin_addr.s_addr = INADDR_ANY;
+            //bind
             if(bind(broadcast_sock, (sockaddr*)&local_addr, sizeof(local_addr)) != 0){
                 throw std::runtime_error("Can't bind broadcast sock to addr");
             }
+            //enable broadcast
             int enable = 1;
             setsockopt(broadcast_sock, SOL_SOCKET, SO_BROADCAST, &enable, sizeof(enable));
-            get_own_ip();
         }
         void send_msg(const char* msg, size_t s){
             sendto(broadcast_sock, msg, s, 0,(sockaddr*)&broadcast_addr, sizeof(broadcast_addr));
+        }
+
+        bool is_suitable_interface_name(char *name){
+            std::string n = name;
+            return !(n.find("lo") != std::string::npos ||
+                    n.find("tun") != std::string::npos ||
+                    n.find("docker") != std::string::npos ||
+                    n.find("veth") != std::string::npos ||
+                    n.find("zt") != std::string::npos ||
+                    n.find("br-") != std::string::npos);
+        }
+
+        void print_ip(sockaddr_in addr){
+            char ip[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &addr.sin_addr, ip, sizeof(ip));
+            std::cout << " IP: " << ip << std::endl;
+        }
+
+        void calculate_broadcast_addr(struct ifaddrs* ifa, sockaddr_in &baddr){
+            auto* addr = (struct sockaddr_in*)ifa->ifa_addr;
+            auto* mask = (struct sockaddr_in*)ifa->ifa_netmask;
+            uint32_t ip_addr = addr->sin_addr.s_addr;
+            uint32_t net_mask = mask->sin_addr.s_addr;
+            uint32_t broadcast = ip_addr | ~net_mask;
+            baddr.sin_addr.s_addr = broadcast;
+        }
+
+        bool get_own_and_brcast_addr(sockaddr_in &own_addr, sockaddr_in &baddr){
+            struct ifaddrs* ifaddr;
+
+            if(getifaddrs(&ifaddr) == -1){
+                throw std::runtime_error("Can't get ifaddr");
+            }
+            for(struct ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next){
+                if (!ifa->ifa_addr) continue;
+                if(!is_suitable_interface_name(ifa->ifa_name)){
+                    continue;
+                }
+                if (ifa->ifa_addr->sa_family != AF_INET) continue;
+                if(!(ifa->ifa_flags & IFF_UP)) continue;
+                calculate_broadcast_addr(ifa, baddr);
+                own_addr = *(sockaddr_in*)ifa->ifa_addr;
+                freeifaddrs(ifaddr);
+                return true;
+            }
+            freeifaddrs(ifaddr);
+            return false;
         }
 
         void get_own_ip(){
