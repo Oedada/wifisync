@@ -17,7 +17,6 @@ class UdpBroadcast{
         UdpBroadcast(int p);
         void send_broadcast();
 
-        void print_ip(sockaddr_in addr);
         bool is_own_ip_bigger();
         bool recieve();
 
@@ -34,3 +33,4 @@ class UdpBroadcast{
         int broadcast_port;
         sockaddr_in broadcast_addr{};
 };
+void print_ip(sockaddr_in addr);

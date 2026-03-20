@@ -7,6 +7,7 @@
 #include "headers/x25519.hpp"
 #include "headers/ed25519.hpp"
 #include <stdexcept>
+#include <unistd.h>
 #include <variant>
 #include "headers/TCPSocket.hpp"
 #include <thread>
@@ -15,6 +16,7 @@
 #include "external_libs/cpp-httplib/httplib.h"
 #include <nlohmann/json.hpp>
 #include "headers/broadcast.hpp"
+#include <fstream>
 
 
 using json = nlohmann::json;
@@ -69,28 +71,31 @@ std::map<std::string, Tasks> str_to_tasks{
 };
 
 TCPSocket create_connect(ConnectData data){
-  if(data.m == Mode::Server){
-    Server ftr(TCP_PORT);
-    while(true){
-      //TODO: добавить таймаут
-        if(ftr.is_ready_to_accept()){
-            TCPSocket s = ftr.accept_conn();
-            if(ftr.client_addr.sin_addr.s_addr == data.addr.sin_addr.s_addr){
-              return s;
-            }
-            else{
-              std::cerr << "Ip doesn't correct";
+    if(data.m == Mode::Server){
+        Server ftr(TCP_PORT);
+        while(true){
+        //TODO: добавить таймаут
+            if(ftr.is_ready_to_accept()){
+                TCPSocket s = ftr.accept_conn();
+                // print_ip(ftr.client_addr);
+                // print_ip(data.addr);
+                if(ftr.client_addr.sin_addr.s_addr == data.addr.sin_addr.s_addr){
+                    return s;
+                }
+                else{
+                    std::cerr << "Ip doesn't correct";
+                }
             }
         }
     }
-  }
-  else if(data.m == Mode::Client){
-    TCPSocket s = client_connect(data.addr);
-    return s;
-  }
-  else{
-    throw std::runtime_error("Unkown mode");
-  }
+    else if(data.m == Mode::Client){
+        // print_ip(data.addr);
+        TCPSocket s = client_connect(data.addr);
+        return s;
+    }
+    else{
+        throw std::runtime_error("Unkown mode");
+    }
 }
 
 int parse_task_json(json j, Command& cmd){
@@ -131,7 +136,7 @@ void get_tasks(const httplib::Request& req, httplib::Response& res){
             res.status = 200;
             res.set_content("Task received", "plain/text");
             for(auto arg: cmd.args){
-                std::visit([](auto&& val){std::cout << val << "\n";}, arg);
+                std::visit([](auto&& val){}, arg);
             }
             cmd_q.add(cmd);
         }
@@ -152,8 +157,8 @@ void http_server(int port){
 
     svr.Post("/tasks", get_tasks);
 
-    std::cout << "Server running on http://127.0.0.1:" << port << "\n";
-    svr.listen("127.0.0.1", port); // блокирующий вызов
+    std::cout << "Server running on http://0.0.0.0:" << port << "\n";
+    svr.listen("0.0.0.0", port); // блокирующий вызов
 }
 
 //-----------//
@@ -163,14 +168,13 @@ void http_server(int port){
 void thread_worker(){
     std::thread client_thread;
     UdpBroadcast br(PORT);
-    char ip[INET_ADDRSTRLEN];
-    while(!br.recieve()){
-        br.send_broadcast();
-        usleep(SLEEP_TIME);
-    }
     while(true){
         Command cmd = cmd_q.get();
         if(cmd.task == Tasks::Connect){
+            while(!br.recieve()){
+                br.send_broadcast();
+                usleep(SLEEP_TIME);
+            }
             ConnectData d;
             if(br.is_own_ip_bigger()){
                 d.m = Mode::Server;
@@ -179,7 +183,24 @@ void thread_worker(){
                 d.m = Mode::Client;
             }
             d.addr = br.other_addr;
-            create_connect(d);
+            TCPSocket sock = create_connect(d);
+            if(d.m == Mode::Client){
+                std::string msg = "Hello world";
+                std::vector<char> vmsg(msg.begin(), msg.end());
+                sock.smart_send_msg(vmsg);
+                std::ofstream fout("data/test_send_file.txt");
+                sock.smart_recv_file(fout);
+            }
+            else{
+                std::vector<unsigned char> vmsg = sock.smart_recv_msg();
+                std::string msg(vmsg.begin(), vmsg.end());
+                std::cout << "Message: " << msg << "\n";
+                std::ifstream fin("data/test_out_text.txt", std::ios::binary | std::ios::ate);
+                uint64_t fsize = fin.tellg();
+                fin.seekg(0);
+                sock.smart_send_file(fin, fsize);
+                
+            }
         }
     }
     if (client_thread.joinable()) {

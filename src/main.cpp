@@ -1,11 +1,12 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <netinet/in.h>
 #include <openssl/rand.h>
+#include <sys/socket.h>
 #include <vector>
 #include "headers/hash.hpp"
 #include "headers/files_opers.hpp"
-#include "headers/client.hpp"
 #include "headers/server.hpp"
 #include "headers/x25519.hpp"
 #include "headers/ed25519.hpp"
@@ -36,8 +37,11 @@ void test_files(){
 }
 
 void test_client(){
-    Client ftr(12345, "192.168.0.101");
-    TCPSocket s = ftr.connect_server();
+    sockaddr_in caddr;
+    caddr.sin_family = AF_INET;
+    caddr.sin_port = 12345;
+    inet_pton(AF_INET, "192.168.0.101", &caddr.sin_addr);
+    TCPSocket s = client_connect(caddr);
     std::ifstream fin("data/test_out_text.txt", std::ios::binary);
     std::vector<char> buffer(8192);
 }
@@ -48,7 +52,7 @@ void test_server(){
     std::cout << ftr.client_ip << ":" << ftr.client_port << std::endl;
     ssize_t n = 1;
     std::ofstream fout("data/out", std::ios::binary);
-    std::vector<unsigned char>buffer = s.smart_recv();
+    std::vector<unsigned char>buffer = s.smart_recv_msg();
     while(true){
         fout.write(reinterpret_cast<char*>(buffer.data()), n);
     }
@@ -116,9 +120,9 @@ void test_x_ed_25519_file_trans(int argc, char** argv){
         Server ftr(12345);
         TCPSocket s = ftr.accept_conn();
         std::cout << ftr.client_ip << ":" << ftr.client_port << std::endl;
-        s.smart_send(pub_key_vector);
+        s.smart_send_msg(pub_key_vector);
         std::ofstream fout("data/client_pub_key.pem", std::ios::binary);
-        std::vector<unsigned char> client_pub_key = s.smart_recv();
+        std::vector<unsigned char> client_pub_key = s.smart_recv_msg();
         fout.write(reinterpret_cast<char*>(client_pub_key.data()), client_pub_key.size());
     } else{
         X25519 client;
@@ -131,11 +135,14 @@ void test_x_ed_25519_file_trans(int argc, char** argv){
             std::cout << pub_key_vector[i];
         }
         std::cout << "\n";
-        Client ftr(12345, "192.168.0.104");
-        TCPSocket s = ftr.connect_server();
-        s.smart_send(pub_key_vector);
+        sockaddr_in caddr;
+        caddr.sin_family = AF_INET;
+        caddr.sin_port = 12345;
+        inet_pton(AF_INET, "ip", &caddr.sin_addr);
+        TCPSocket s = client_connect(caddr);
+        s.smart_send_msg(pub_key_vector);
         std::ofstream fout("data/server_pub_key.pem", std::ios::binary);
-        std::vector<unsigned char> client_pub_key = s.smart_recv();
+        std::vector<unsigned char> client_pub_key = s.smart_recv_msg();
         fout.write(reinterpret_cast<char*>(client_pub_key.data()), client_pub_key.size());
     }
 }

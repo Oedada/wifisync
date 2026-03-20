@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <vector>
 #include <unistd.h>
+#include <fstream>
 
 class TCPSocket{
     public:
@@ -29,8 +30,10 @@ class TCPSocket{
         TCPSocket(const int s) : sock(s){}
         void send(const std::vector<char> &buf, const size_t size);
         size_t receive(void *buf, size_t size);
-        void smart_send(const std::vector<char> &buf);
-        std::vector<unsigned char> smart_recv();
+        void smart_send_msg(const std::vector<char> &msg);
+        std::vector<unsigned char> smart_recv_msg();
+        void smart_send_file(std::ifstream& fin, uint64_t file_size);
+        void smart_recv_file(std::ofstream& fout);
         ~TCPSocket();
 
     private:

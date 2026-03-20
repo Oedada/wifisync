@@ -48,7 +48,7 @@ bool UdpBroadcast::is_suitable_interface_name(char *name){
             n.find("br-") != std::string::npos);
 }
 
-void UdpBroadcast::print_ip(sockaddr_in addr){
+void print_ip(sockaddr_in addr){
     char ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &addr.sin_addr, ip, sizeof(ip));
     std::cout << " IP: " << ip << std::endl;
