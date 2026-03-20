@@ -1,5 +1,6 @@
 #include "headers/TCPSocket.hpp"
 #include <cstdint>
+#include <netinet/in.h>
 #include <stdexcept>
 #include <sys/types.h>
 #include <unistd.h>
@@ -64,3 +65,10 @@ TCPSocket::~TCPSocket(){
         ::close(sock);
 }
 
+TCPSocket client_connect(sockaddr_in addr){
+    int client_sock = socket(AF_INET, SOCK_STREAM, 0);
+    if(::connect(client_sock, (sockaddr*)&addr, sizeof(addr)) != 0){
+        throw std::runtime_error("Error with connect to server");
+    }
+    return TCPSocket(client_sock);
+}

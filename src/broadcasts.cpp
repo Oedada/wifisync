@@ -148,19 +148,24 @@ bool UdpBroadcast::recieve(){
     return false;
 }
 
+bool UdpBroadcast::is_own_ip_bigger(){
+    return own_addr.sin_addr.s_addr > other_addr.sin_addr.s_addr;
+}
+
+
 UdpBroadcast::~UdpBroadcast(){ 
     close(broadcast_sock);
 }
 
 
-int main() {
-    UdpBroadcast b(PORT);
-    char ip[INET_ADDRSTRLEN];
-    while(!b.recieve()){
-        b.send_broadcast();
-        usleep(SLEEP_TIME);
-    }
-    inet_ntop(AF_INET, &b.other_addr.sin_addr, ip, sizeof(ip));
-    std::cout << "Other Ip: " << ip << "\n";
-    std::cout << "Other Port: " << b.other_addr.sin_port << "\n";
-}
+// int main() {
+//     UdpBroadcast b(PORT);
+//     char ip[INET_ADDRSTRLEN];
+//     while(!b.recieve()){
+//         b.send_broadcast();
+//         usleep(SLEEP_TIME);
+//     }
+//     inet_ntop(AF_INET, &b.other_addr.sin_addr, ip, sizeof(ip));
+//     std::cout << "Other Ip: " << ip << "\n";
+//     std::cout << "Other Port: " << b.other_addr.sin_port << "\n";
+// }

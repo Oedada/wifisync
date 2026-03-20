@@ -1,9 +1,8 @@
-#include <chrono>
+// #include <chrono>
 #include <exception>
 #include <iostream>
 #include <map>
 #include <openssl/rand.h>
-#include "headers/client.hpp"
 #include "headers/server.hpp"
 #include "headers/x25519.hpp"
 #include "headers/ed25519.hpp"
@@ -15,14 +14,14 @@
 #include <queue>
 #include "external_libs/cpp-httplib/httplib.h"
 #include <nlohmann/json.hpp>
+#include "headers/broadcast.hpp"
+
 
 using json = nlohmann::json;
 using Arg = std::variant<bool, int, std::string>;
 
 enum class Tasks{
-    StartServer,
-    Connect,
-    SendTest
+    Connect
 };
 
 
@@ -38,37 +37,10 @@ enum class Mode{
 
 struct ConnectData{
   Mode m;
-  std::string ip;
-  int port;
+  sockaddr_in addr;
 };
 
 int TCP_PORT = 12345;
-
-// TCPSocket create_connect(ConnectData data){
-//   if(data.m == Mode::Server){
-//     Server ftr(TCP_PORT);
-//     while(true){
-//       //TODO: добавить таймаут
-//         if(ftr.is_ready_to_accept()){
-//             TCPSocket s = ftr.accept_conn();
-//             if(ftr.client_ip == data.ip){
-//               return s;
-//             }
-//             else{
-//               std::cerr << "Ip doesn't correct";
-//             }
-//         }
-//     }
-//   }
-//   else if(data.m == Mode::Client){
-//     Client ftr(data.port, data.ip);
-//     TCPSocket s = ftr.connect_server();
-//     return s;
-//   }
-//   else{
-//     throw std::runtime_error("Unkown mode");
-//   }
-// }
 
 class SafeCmdQueue{
     private:
@@ -93,29 +65,32 @@ class SafeCmdQueue{
 
 SafeCmdQueue cmd_q;
 std::map<std::string, Tasks> str_to_tasks{
-    {"start_server", Tasks::StartServer},
     {"connect", Tasks::Connect}, 
-    {"send", Tasks::SendTest}
 };
 
-
-void server() {
-    Server ftr(12345);
+TCPSocket create_connect(ConnectData data){
+  if(data.m == Mode::Server){
+    Server ftr(TCP_PORT);
     while(true){
+      //TODO: добавить таймаут
         if(ftr.is_ready_to_accept()){
             TCPSocket s = ftr.accept_conn();
-            std::cout << "Client info - " << ftr.client_ip << ":" << ftr.client_port << std::endl;
+            if(ftr.client_addr.sin_addr.s_addr == data.addr.sin_addr.s_addr){
+              return s;
+            }
+            else{
+              std::cerr << "Ip doesn't correct";
+            }
         }
     }
-}
-
-void client(const int server_port,const std::string &server_ip){
-    Client ftr(server_port, server_ip);
-    TCPSocket s = ftr.connect_server();
-    while(true){
-        std::cout << "Client don't off" << "\n";
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-    }
+  }
+  else if(data.m == Mode::Client){
+    TCPSocket s = client_connect(data.addr);
+    return s;
+  }
+  else{
+    throw std::runtime_error("Unkown mode");
+  }
 }
 
 int parse_task_json(json j, Command& cmd){
@@ -187,26 +162,24 @@ void http_server(int port){
 
 void thread_worker(){
     std::thread client_thread;
+    UdpBroadcast br(PORT);
+    char ip[INET_ADDRSTRLEN];
+    while(!br.recieve()){
+        br.send_broadcast();
+        usleep(SLEEP_TIME);
+    }
     while(true){
         Command cmd = cmd_q.get();
         if(cmd.task == Tasks::Connect){
-
-            if(cmd.args.size() != 2){
-                throw std::runtime_error("Should be two args in connect function");
-            }
-            if(auto ip_ptr = std::get_if<std::string>(&cmd.args[0])){
-                std::string ip = *ip_ptr;
-                if(auto port_prt = std::get_if<int>(&cmd.args[1])){
-                   int port = *port_prt;
-                   client_thread = std::thread(client, port, ip);
-                }
-                else{
-                    throw std::runtime_error("Port don't int");
-                }
+            ConnectData d;
+            if(br.is_own_ip_bigger()){
+                d.m = Mode::Server;
             }
             else{
-                throw std::runtime_error("Ip don't string");
+                d.m = Mode::Client;
             }
+            d.addr = br.other_addr;
+            create_connect(d);
         }
     }
     if (client_thread.joinable()) {
@@ -214,12 +187,10 @@ void thread_worker(){
     }
 }
 
-// int main() {
-//     std::thread server_thread(server);
-//     std::thread api_thread(http_server, 5000);
-//     std::thread thread_work_thread(thread_worker);
+int main() {
+    std::thread api_thread(http_server, 5000);
+    std::thread thread_work_thread(thread_worker);
     
-//     api_thread.join();
-//     thread_work_thread.join();
-//     server_thread.join();
-// }
+    api_thread.join();
+    thread_work_thread.join();
+}

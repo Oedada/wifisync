@@ -9,6 +9,7 @@ class Server{
         Server(const Server&) = delete;
         Server& operator=(const Server&) = delete;
         const int server_port;
+        sockaddr_in client_addr;
         std::string client_ip;
         int client_port;
 
@@ -23,7 +24,6 @@ class Server{
         int server_fd;
         sockaddr_in server_addr{};
         int client_fd = -1;
-        sockaddr_in client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
     
 };
