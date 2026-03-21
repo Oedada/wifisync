@@ -3,10 +3,10 @@
 #include <netinet/in.h>
 #include <stdexcept>
 #include <sys/types.h>
+#include <thread>
 #include <unistd.h>
 #include <vector>
 #include <fstream>
-#include <iostream>
 constexpr uint64_t MAX_ALLOWED_SIZE = 8388608;
 constexpr uint64_t BUFFER_SIZE = 8192;
 
@@ -86,7 +86,6 @@ void TCPSocket::smart_recv_file(std::ofstream& fout){
     unsigned char file_size_bytes[8];
     receive(file_size_bytes, 8);
     uint64_t file_size = fromBytes(file_size_bytes);
-    std::cout << file_size;
     uint64_t remaining_bytes = file_size;
     int read_size;
     while(remaining_bytes > 0){
@@ -98,7 +97,7 @@ void TCPSocket::smart_recv_file(std::ofstream& fout){
             read_size =  remaining_bytes;
             remaining_bytes = 0;
         }
-        receive(buf.data(), buf.size());
+        receive(buf.data(), read_size);
         fout.write(buf.data(), read_size);
     }
 }
@@ -110,8 +109,13 @@ TCPSocket::~TCPSocket(){
 
 TCPSocket client_connect(sockaddr_in addr){
     int client_sock = socket(AF_INET, SOCK_STREAM, 0);
-    if(::connect(client_sock, (sockaddr*)&addr, sizeof(addr)) != 0){
-        throw std::runtime_error("Error with connect to server");
+    int retries = 5;
+    while(retries-- > 0) {
+        if(::connect(client_sock, (sockaddr*)&addr, sizeof(addr)) == 0) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+    if(retries <= 0) {
+        throw std::runtime_error("connect failed after retries");
     }
     return TCPSocket(client_sock);
 }
