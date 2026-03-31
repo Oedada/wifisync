@@ -6,7 +6,7 @@ class Units{
     public:
         std::filesystem::path json_path;
         nlohmann::json json_tree;
-        Units(const std::filesystem::path& jp);
+        Units(const std::filesystem::path& jp, bool clear_create);
         void set_unit(const std::filesystem::path &dp, bool ignore_registred);
         void get_unit(const std::filesystem::path p, nlohmann::json &unit);
         void rm_unit(const std::filesystem::path &dp);

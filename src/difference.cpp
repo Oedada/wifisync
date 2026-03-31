@@ -144,8 +144,9 @@ class Difference{
 };
 
 int main(){
-    Units cur_dir("data/ctest.json");
-    Units last_dir("data/ltest.json");
+    Units cur_dir("data/ctest.json", true);
+    cur_dir.set_unit("data/train", false);
+    Units last_dir("data/ltest.json", false);
     Difference dif("data/test_dif.json", last_dir.json_tree, cur_dir.json_tree);
     dif.calculate_difference();
 }

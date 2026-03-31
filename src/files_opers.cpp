@@ -11,11 +11,11 @@
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
-    Units::Units(const fs::path& jp) : json_path(jp){
+    Units::Units(const fs::path& jp, bool clear_create) : json_path(jp){
         if(!fs::exists(json_path.parent_path())){
             throw std::runtime_error("Путь к файлу не валиден");
         }
-        if(!fs::exists(json_path)){
+        if(!fs::exists(json_path) || clear_create){
             std::ofstream fout(json_path, std::ios::out);
             fout.write("{}", 2);
         }

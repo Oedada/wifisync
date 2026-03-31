@@ -23,7 +23,7 @@ void test_hash(){
 }
 
 void test_files(){
-    Units plugins("data/files.json");
+    Units plugins("data/files.json", false);
     plugins.set_unit("data/train", true);
     plugins.rm_unit("data/train/HiddenArmor");
     std::cout << plugins.is_registred("data/train/lol33");
