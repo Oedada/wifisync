@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include "headers/hash.hpp"
 #include "headers/files_opers.hpp"
+#include "headers/constants.hpp"
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -17,7 +18,7 @@ namespace fs = std::filesystem;
         }
         if(!fs::exists(json_path) || clear_create){
             std::ofstream fout(json_path, std::ios::out);
-            fout.write("{}", 2);
+            fout << "{}";
         }
         std::ifstream fin(json_path, std::ios::in);
         fin >> json_tree;
@@ -129,24 +130,24 @@ namespace fs = std::filesystem;
         Hash unit_hash;
         unit_hash.update(ulong_to_uchar(json_field_key.size()));
         unit_hash.update(json_field_key);
-        if(json_field["/type"] == "dir") {
+        if(json_field[constants::JSON_FIELD_NAME_TYPE] == constants::UNIT_TYPE_DIR) {
             for(const auto& [key, val] : json_field.items()){
-                if(key == "/hash" || key == "/type"){
+                if(key == constants::JSON_FIELD_NAME_HASH || key == constants::JSON_FIELD_NAME_TYPE){
                     continue;
                 }
                 write_hash(path / key, val, std::vector<unsigned char> (key.begin(), key.end()), false);
-                unit_hash.update(json_field[key]["/hash"]);
+                unit_hash.update(json_field[key][constants::JSON_FIELD_NAME_HASH]);
             }
         }
-        else if(json_field["/type"] == "file"){
+        else if(json_field[constants::JSON_FIELD_NAME_TYPE] == constants::UNIT_TYPE_FILE){
             std::ifstream fin(path, std::ios::binary);
-            std::vector<unsigned char> buf(8192);
+            std::vector<unsigned char> buf(constants::BUFFER_SIZE);
             while(fin.read(reinterpret_cast<char*>(buf.data()), buf.size()) || fin.gcount() > 0){
                 unit_hash.update(std::vector<unsigned char> (buf.begin(), buf.begin() + fin.gcount()));
             }
         }
         unit_hash.calculate();
-        json_field["/hash"] = unit_hash.hash;
+        json_field[constants::JSON_FIELD_NAME_HASH] = unit_hash.hash;
     }
 
     void Units::create_json_file_list(fs::path path, json& json_field, bool is_first_call){
@@ -156,16 +157,16 @@ namespace fs = std::filesystem;
         std::vector<fs::path> units;
         if(fs::is_directory(path)){
             if(fs::is_empty(path)){
-                json_field["/type"] = "empty_dir";
+                json_field[constants::JSON_FIELD_NAME_TYPE] = constants::UNIT_TYPE_EMPTY_DIR;
             }
             else {
-                json_field["/type"] = "dir";
+                json_field[constants::JSON_FIELD_NAME_TYPE] = constants::UNIT_TYPE_DIR;
                 for(const fs::path& entry: fs::directory_iterator(path)){
                     create_json_file_list(entry, json_field[entry.filename().c_str()], false);
                 }
             }
         }
         else if(fs::is_regular_file(path)){
-            json_field["/type"] = "file";
+            json_field[constants::JSON_FIELD_NAME_TYPE] = constants::UNIT_TYPE_FILE;
         }
     }

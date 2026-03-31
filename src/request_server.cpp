@@ -14,6 +14,7 @@
 #include <nlohmann/json.hpp>
 #include "headers/broadcast.hpp"
 #include "headers/request_server.hpp"
+#include "headers/constants.hpp"
 
 using json = nlohmann::json;
 using Arg = std::variant<bool, int, std::string>;
@@ -44,8 +45,8 @@ void TaskServer::start_server(int port){
 
     svr.Post("/tasks", [this](const httplib::Request& req, httplib::Response& res){this->get_tasks(req, res);});
 
-    std::cout << "Server running on http://0.0.0.0:" << port << "\n";
-    svr.listen("0.0.0.0", port); // блокирующий вызов
+    printf("Server running on http://%s:%i\n",constants::LOCAL_IP_ADDR, port);
+    svr.listen(constants::LOCAL_IP_ADDR, port); // блокирующий вызов
 }
 
 int TaskServer::parse_task_json(json j, tstypes::Command& cmd){
@@ -86,7 +87,7 @@ void TaskServer::get_tasks(const httplib::Request& req, httplib::Response& res){
             res.status = 200;
             res.set_content("Task received", "plain/text");
             for(auto arg: cmd.args){
-                std::visit([](auto&& val){}, arg);
+                std::visit([](auto&&){}, arg);
             }
             cmd_q->add(cmd);
         }

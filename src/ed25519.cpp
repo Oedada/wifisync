@@ -6,8 +6,6 @@
 #include "headers/ed25519.hpp"
 #include "headers/utils.hpp"
 
-std::string ED25519_KEY_DIR = "data/keys";
-
 namespace fs = std::filesystem;
 
 Ed25519::Ed25519(const fs::path& kd) : key_dir(kd) {

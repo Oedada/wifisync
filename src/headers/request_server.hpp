@@ -8,8 +8,8 @@
 #include "nlohmann/json.hpp"
 
 namespace httplib{
-    class Request;
-    class Response;
+    struct Request;
+    struct Response;
 }
 
 using Arg = std::variant<bool, int, std::string>;

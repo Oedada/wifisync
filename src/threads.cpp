@@ -14,6 +14,7 @@
 #include "headers/broadcast.hpp"
 #include <fstream>
 #include "headers/request_server.hpp"
+#include "headers/constants.hpp"
 
 
 using json = nlohmann::json;
@@ -28,14 +29,12 @@ struct ConnectData{
     Mode m;
     sockaddr_in addr;
 };
-
-const int TCP_PORT = 12345;
 SafeCmdQueue cmd_q;
 
 
 TCPSocket create_connect(ConnectData data){
     if(data.m == Mode::Server){
-        Server ftr(TCP_PORT);
+        Server ftr(constants::TCP_PORT);
         while(true){
         //TODO: добавить таймаут
             if(ftr.is_ready_to_accept()){

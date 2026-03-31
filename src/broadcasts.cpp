@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include "headers/broadcast.hpp"
+#include "headers/constants.hpp"
 
 UdpBroadcast::UdpBroadcast(int p) : broadcast_port(p){
     if(broadcast_sock < 0){
@@ -17,7 +18,7 @@ UdpBroadcast::UdpBroadcast(int p) : broadcast_port(p){
     // get own addr and broadcast addr
     if(!get_own_and_brcast_addr(own_addr, broadcast_addr)){
         get_own_ip();
-        inet_pton(AF_INET, "255.255.255.255", &broadcast_addr.sin_addr); 
+        inet_pton(AF_INET, constants::GLOBAL_BROADCAST_IP, &broadcast_addr.sin_addr); 
     }
     // broadcast addr
     broadcast_addr.sin_family = AF_INET;
@@ -91,15 +92,15 @@ void UdpBroadcast::get_own_ip(){
     sockaddr_in tmp_addr{};
     tmp_addr.sin_family = AF_INET;
     tmp_addr.sin_port = htons(53);
-    inet_pton(AF_INET, "8.8.8.8", &tmp_addr.sin_addr);
+    inet_pton(AF_INET, constants::PING_CONNECT_TEST_IP, &tmp_addr.sin_addr);
 
     if(connect(tmp_sock, (sockaddr*)&tmp_addr, sizeof(tmp_addr)) != 0){
-        inet_pton(AF_INET, "192.0.2.1", &tmp_addr.sin_addr);
+        inet_pton(AF_INET, constants::TEST_NET_IP, &tmp_addr.sin_addr);
         if(connect(tmp_sock, (sockaddr*)&tmp_addr, sizeof(tmp_addr)) != 0){
             throw std::runtime_error("Can't build route for know own ip");
         }
     }
-    socklen_t own_addr_size = sizeof(own_addr); 
+    socklen_t own_addr_size = sizeof(own_addr);
     getsockname(tmp_sock, (sockaddr*)&own_addr, &own_addr_size);
     close(tmp_sock);
 }
@@ -111,12 +112,12 @@ bool UdpBroadcast::is_ready_to_recv(){
 
     struct timeval timeout;
     timeout.tv_sec = 0;
-    timeout.tv_usec = 200000;
+    timeout.tv_usec = constants::SOCKET_CHECK_TIMEOUT;
     
     int ret = select(broadcast_sock + 1, &readfds, nullptr, nullptr, &timeout);
 
     if (ret < 0) {
-        perror("select");
+        perror("Error: select");
         return false;
     }
     if(ret > 0 && FD_ISSET(broadcast_sock, &readfds)){
@@ -127,7 +128,7 @@ bool UdpBroadcast::is_ready_to_recv(){
 
 bool UdpBroadcast::recieve(){
     if(is_ready_to_recv()){
-        char buf[1024];
+        char buf[constants::BUFFER_SIZE];
         sockaddr_in tmp_addr;
         socklen_t sender_len = sizeof(tmp_addr);
         ssize_t n = recvfrom(broadcast_sock, buf, sizeof(buf)-1, 0,(sockaddr*)&tmp_addr, &sender_len);
@@ -156,16 +157,3 @@ bool UdpBroadcast::is_own_ip_bigger(){
 UdpBroadcast::~UdpBroadcast(){ 
     close(broadcast_sock);
 }
-
-
-// int main() {
-//     UdpBroadcast b(PORT);
-//     char ip[INET_ADDRSTRLEN];
-//     while(!b.recieve()){
-//         b.send_broadcast();
-//         usleep(SLEEP_TIME);
-//     }
-//     inet_ntop(AF_INET, &b.other_addr.sin_addr, ip, sizeof(ip));
-//     std::cout << "Other Ip: " << ip << "\n";
-//     std::cout << "Other Port: " << b.other_addr.sin_port << "\n";
-// }

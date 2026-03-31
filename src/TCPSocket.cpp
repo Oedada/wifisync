@@ -11,11 +11,9 @@
 #include <fstream>
 #include <filesystem>
 #include "headers/utils.hpp"
+#include "headers/constants.hpp"
 
 namespace fs = std::filesystem;
-
-constexpr uint64_t MAX_ALLOWED_SIZE = 8388608;
-constexpr uint64_t BUFFER_SIZE = 8192;
 
 void TCPSocket::send(const std::vector<char> &buf, const size_t size){
     ::send(sock, buf.data(), size, 0);
@@ -39,19 +37,19 @@ size_t TCPSocket::receive(void *data, size_t size){
 
 void TCPSocket::smart_send_msg(const std::vector<char> &msg){
     unsigned char size_bytes[8];
-    if ((uint64_t)msg.size() > MAX_ALLOWED_SIZE){
+    if ((uint64_t)msg.size() > constants::MAX_ALLOWED_SIZE){
         throw std::runtime_error("Can't send message, it's too large");
     }
     toBytes((uint64_t)msg.size(), size_bytes);
-    ::send(sock, size_bytes, 8, 0);
+    ::send(sock, size_bytes, sizeof(uint64_t), 0);
     ::send(sock, msg.data(), msg.size(), 0);
 }
 
 std::vector<unsigned char> TCPSocket::smart_recv_msg(){
-    unsigned char size_bytes[8];
-    receive(size_bytes, 8);
+    unsigned char size_bytes[sizeof(uint64_t)];
+    receive(size_bytes, sizeof(uint64_t));
     uint64_t data_size = fromBytes64(size_bytes);
-    if (data_size > MAX_ALLOWED_SIZE || data_size < 0){
+    if (data_size > constants::MAX_ALLOWED_SIZE || data_size < 0){
         throw std::runtime_error("Invalide message size");
     }
     std::vector<unsigned char> buf(data_size);
@@ -60,10 +58,10 @@ std::vector<unsigned char> TCPSocket::smart_recv_msg(){
 }
 
 void TCPSocket::send_file(std::ifstream& fin, uint64_t file_size){
-    std::vector<char> buf(BUFFER_SIZE);
-    unsigned char file_size_bytes[8];
+    std::vector<char> buf(constants::BUFFER_SIZE);
+    unsigned char file_size_bytes[sizeof(uint64_t)];
     toBytes(file_size, file_size_bytes);
-    ::send(sock, file_size_bytes, 8, 0);
+    ::send(sock, file_size_bytes, sizeof(uint64_t), 0);
     if(fin){
         while(fin.read(buf.data(), buf.size() || fin.gcount() > 0)){
             ::send(sock, buf.data(), fin.gcount(), 0);
@@ -75,16 +73,16 @@ void TCPSocket::send_file(std::ifstream& fin, uint64_t file_size){
 }
 
 void TCPSocket::recv_file(std::ofstream& fout){
-    std::vector<char> buf(BUFFER_SIZE);
-    unsigned char file_size_bytes[8];
-    receive(file_size_bytes, 8);
+    std::vector<char> buf(constants::BUFFER_SIZE);
+    unsigned char file_size_bytes[sizeof(uint64_t)];
+    receive(file_size_bytes, sizeof(uint64_t));
     uint64_t file_size = fromBytes64(file_size_bytes);
     uint64_t remaining_bytes = file_size;
     int read_size;
     while(remaining_bytes > 0){
-        if(remaining_bytes >= BUFFER_SIZE){
-            remaining_bytes -= BUFFER_SIZE;
-            read_size = BUFFER_SIZE;
+        if(remaining_bytes >= constants::BUFFER_SIZE){
+            remaining_bytes -= constants::BUFFER_SIZE;
+            read_size = constants::BUFFER_SIZE;
         }
         else{
             read_size =  remaining_bytes;
@@ -177,7 +175,7 @@ TCPSocket::~TCPSocket(){
 
 TCPSocket client_connect(sockaddr_in addr){
     int client_sock = socket(AF_INET, SOCK_STREAM, 0);
-    int retries = 5;
+    int retries = constants::CONNECT_RETRIES_COUNT;
     while(retries-- > 0) {
         if(::connect(client_sock, (sockaddr*)&addr, sizeof(addr)) == 0) break;
         else{
