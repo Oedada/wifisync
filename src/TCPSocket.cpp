@@ -1,5 +1,7 @@
 #include "headers/TCPSocket.hpp"
 #include <cstdint>
+#include <cstring>
+#include <iostream>
 #include <netinet/in.h>
 #include <stdexcept>
 #include <sys/types.h>
@@ -7,22 +9,13 @@
 #include <unistd.h>
 #include <vector>
 #include <fstream>
+#include <filesystem>
+#include "headers/utils.hpp"
+
+namespace fs = std::filesystem;
+
 constexpr uint64_t MAX_ALLOWED_SIZE = 8388608;
 constexpr uint64_t BUFFER_SIZE = 8192;
-
-void toBytes(uint64_t x, unsigned char* out_b){
-    for(int i = 0; i < 8; i++){
-        out_b[7-i] = (x >> i*8) & 0xFF;
-    }
-}
-
-uint64_t fromBytes(unsigned char* in_b){
-    uint64_t x = 0;
-    for(int i = 0; i < 8; i++){
-        x |= (uint64_t)in_b[7-i] << i*8;
-    }
-    return x;
-}
 
 void TCPSocket::send(const std::vector<char> &buf, const size_t size){
     ::send(sock, buf.data(), size, 0);
@@ -57,7 +50,7 @@ void TCPSocket::smart_send_msg(const std::vector<char> &msg){
 std::vector<unsigned char> TCPSocket::smart_recv_msg(){
     unsigned char size_bytes[8];
     receive(size_bytes, 8);
-    uint64_t data_size = fromBytes(size_bytes);
+    uint64_t data_size = fromBytes64(size_bytes);
     if (data_size > MAX_ALLOWED_SIZE || data_size < 0){
         throw std::runtime_error("Invalide message size");
     }
@@ -66,7 +59,7 @@ std::vector<unsigned char> TCPSocket::smart_recv_msg(){
     return buf;
 }
 
-void TCPSocket::smart_send_file(std::ifstream& fin, uint64_t file_size){
+void TCPSocket::send_file(std::ifstream& fin, uint64_t file_size){
     std::vector<char> buf(BUFFER_SIZE);
     unsigned char file_size_bytes[8];
     toBytes(file_size, file_size_bytes);
@@ -81,11 +74,11 @@ void TCPSocket::smart_send_file(std::ifstream& fin, uint64_t file_size){
     }
 }
 
-void TCPSocket::smart_recv_file(std::ofstream& fout){
+void TCPSocket::recv_file(std::ofstream& fout){
     std::vector<char> buf(BUFFER_SIZE);
     unsigned char file_size_bytes[8];
     receive(file_size_bytes, 8);
-    uint64_t file_size = fromBytes(file_size_bytes);
+    uint64_t file_size = fromBytes64(file_size_bytes);
     uint64_t remaining_bytes = file_size;
     int read_size;
     while(remaining_bytes > 0){
@@ -102,6 +95,81 @@ void TCPSocket::smart_recv_file(std::ofstream& fout){
     }
 }
 
+void TCPSocket::send_dir(fs::path root){
+    if(!fs::is_directory(root)){
+        throw std::runtime_error("Root path should be directory");
+    }
+    for(const auto& unit : fs::directory_iterator(root)){
+        std::vector<char> type;
+        if(fs::is_directory(unit)){
+            type = std::vector<char>('d');
+            send(type, 1);
+            uint64_t count_unit = std::distance(
+            std::filesystem::directory_iterator(unit),
+            std::filesystem::directory_iterator{}
+            );
+            std::vector<char> count_unit_bytes;
+            toBytes(count_unit, reinterpret_cast<unsigned char*>(count_unit_bytes.data()));
+            send(count_unit_bytes, 8);
+            send_dir(root / unit);
+        }
+        else if(fs::is_regular_file(unit)){
+            type = std::vector<char>('f');
+            send(type, 1);
+            std::ifstream fin(fs::absolute(unit), std::ios::binary | std::ios::ate);
+            uint64_t fsize = fin.tellg();
+            fin.seekg(0);
+            send_file(fin, fsize);
+        }
+        else{
+            throw std::runtime_error("Unknow file type");
+        }
+    }
+}
+
+void TCPSocket::recv_dir(fs::path root, uint64_t count_of_enclosure){
+    if(!fs::is_directory(root)){
+        throw std::runtime_error("Root path should be directory");
+    }
+    for(const auto& unit : fs::directory_iterator(root)){
+        std::vector<char> type;
+        if(fs::is_directory(unit)){
+            type = std::vector<char>('d');
+            send(type, 1);
+            uint64_t count_unit = std::distance(
+            std::filesystem::directory_iterator(unit),
+            std::filesystem::directory_iterator{}
+            );
+            std::vector<char> count_unit_bytes;
+            toBytes(count_unit, reinterpret_cast<unsigned char*>(count_unit_bytes.data()));
+            send(count_unit_bytes, 8);
+            send_dir(root / unit);
+        }
+        else if(fs::is_regular_file(unit)){
+            type = std::vector<char>('f');
+            send(type, 1);
+            std::ifstream fin(fs::absolute(unit), std::ios::binary | std::ios::ate);
+            uint64_t fsize = fin.tellg();
+            fin.seekg(0);
+            send_file(fin, fsize);
+        }
+        else{
+            throw std::runtime_error("Unknow file type");
+        }
+    }
+}
+
+void TCPSocket::recv_dir(){
+    char type[1];
+    receive(type, 1);
+    if(type[0] == 'd'){
+        recv_dir();
+    }
+    else{
+        throw std::runtime_error("First unit should have dir type");
+    }
+}
+
 TCPSocket::~TCPSocket(){
     if (sock >= 0)
         ::close(sock);
@@ -112,6 +180,9 @@ TCPSocket client_connect(sockaddr_in addr){
     int retries = 5;
     while(retries-- > 0) {
         if(::connect(client_sock, (sockaddr*)&addr, sizeof(addr)) == 0) break;
+        else{
+            std::cerr << "Can't connect to server with error " << strerror(errno) << "\n";
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
     if(retries <= 0) {

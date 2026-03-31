@@ -11,7 +11,6 @@
 #include "headers/x25519.hpp"
 #include "headers/ed25519.hpp"
 #include "headers/TCPSocket.hpp"
-
 using json = nlohmann::json;
 
 void test_hash(){
@@ -148,7 +147,13 @@ void test_x_ed_25519_file_trans(int argc, char** argv){
 }
 
 
+
+
 // int main(int argc, char** argv){
 //     std::cout << "Working" << "\n";
+//     Units dir("data/test.json");
+//     dir.set_unit("data/train", true);
+//     json file_tree = dir.json_tree;
+    
 //     return 0;
 // }

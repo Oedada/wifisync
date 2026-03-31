@@ -96,7 +96,7 @@ void thread_worker(){
                 std::vector<char> vmsg(msg.begin(), msg.end());
                 sock->smart_send_msg(vmsg);
                 std::ofstream fout("data/test_send_file.txt");
-                sock->smart_recv_file(fout);
+                sock->recv_file(fout);
             }
             else{
                 std::cout << ">>>Role: Server\n";
@@ -106,17 +106,17 @@ void thread_worker(){
                 std::ifstream fin("data/test_out_text.txt", std::ios::binary | std::ios::ate);
                 uint64_t fsize = fin.tellg();
                 fin.seekg(0);
-                sock->smart_send_file(fin, fsize);
+                sock->send_file(fin, fsize);
             }
         }
     }
 }
 
-int main() {
-    TaskServer ts(cmd_q);
-    std::thread api_thread([&ts](){return ts.start_server(5000);});
-    std::thread thread_work_thread(thread_worker);
+// int main() {
+//     TaskServer ts(cmd_q);
+//     std::thread api_thread([&ts](){return ts.start_server(5000);});
+//     std::thread thread_work_thread(thread_worker);
     
-    api_thread.join();
-    thread_work_thread.join();
-}
+//     api_thread.join();
+//     thread_work_thread.join();
+// }

@@ -21,6 +21,7 @@ namespace fs = std::filesystem;
         }
         std::ifstream fin(json_path, std::ios::in);
         fin >> json_tree;
+        
     }
 
     void Units::set_unit(const fs::path &p, bool ignore_registred){
@@ -31,7 +32,8 @@ namespace fs = std::filesystem;
             throw std::runtime_error(std::string("Unit ") + p.string() + " is already registred");
         }
         create_json_file_list(p, json_tree[p], true);
-        write_hash(p, json_tree[p], std::vector<unsigned char> (p.string().begin(), p.string().end()), true);
+        std::string str = p.string();
+        write_hash(p, json_tree[p], std::vector<unsigned char> (str.begin(), str.end()), true);
         save();
     }
 

@@ -6,6 +6,7 @@
 #include <vector>
 #include <unistd.h>
 #include <fstream>
+#include <filesystem>
 
 class TCPSocket{
     public:
@@ -32,8 +33,11 @@ class TCPSocket{
         size_t receive(void *buf, size_t size);
         void smart_send_msg(const std::vector<char> &msg);
         std::vector<unsigned char> smart_recv_msg();
-        void smart_send_file(std::ifstream& fin, uint64_t file_size);
-        void smart_recv_file(std::ofstream& fout);
+        void send_file(std::ifstream& fin, uint64_t file_size);
+        void recv_file(std::ofstream& fout);
+        void send_dir(std::filesystem::path root);
+        void recv_dir(std::filesystem::path root, uint64_t count_of_enclosure);
+        void recv_dir();
         ~TCPSocket();
 
     private:

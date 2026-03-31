@@ -5,10 +5,10 @@
 # Defaults are written in []
 
 # Languagefile to be used (found in plugins/Brewery/languages)
-language: en
+# language: en
 
 # If the player wakes up at /home when logging in after excessive drinking (/home plugin must be installed!) [true]
-enableHome: true
+# enableHome: true
 
 # Type of the home-teleport: ['cmd: home']
 # bed = Player will be teleported to his spawn bed
