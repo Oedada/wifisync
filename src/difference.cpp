@@ -61,10 +61,15 @@ class Difference{
         return get_hash_from_json(l) == get_hash_from_json(c);
     }
 
-    std::vector<std::string> exluding_dif(std::vector<std::string> m1, std::vector<std::string> m2){
-        if(m2.size() >= m1.size()){
-            throw std::runtime_error("First massive should be bigger than second");
+    std::vector<std::string> get_keys(json j){
+        std::vector<std::string> keys;
+        for(auto &[key, val] : j.items()){
+            keys.push_back(key);
         }
+        return keys;
+    }
+
+    std::vector<std::string> exluding_dif(std::vector<std::string> m1, std::vector<std::string> m2){
         std::vector<std::string> dif;
         for(auto s : m1){
             if(std::find(m2.begin(), m2.end(), s.c_str()) == m2.end()){
@@ -74,16 +79,23 @@ class Difference{
         return dif;
     }
 
+    // возращает те элементы, что есть в первом, но нет во втром
     std::vector<std::string> exluding_dif(json m1, json m2){
-        std::vector<std::string> key1;
-        std::vector<std::string> key2;
-        for(auto &[key, val] : m1.items()){
-            key1.push_back(key);
+        return exluding_dif(get_keys(m1), get_keys(m2));
+    }
+
+    std::vector<std::string> shared_elements(std::vector<std::string> m1, std::vector<std::string> m2){
+        std::vector<std::string> elts;
+        for(auto s : m1){
+            if(std::find(m2.begin(), m2.end(), s.c_str()) != m2.end()){
+                elts.push_back(s);
+            }
         }
-        for(auto &[key, val] : m2.items()){
-            key2.push_back(key);
-        }
-        return exluding_dif(key1, key2);
+        return elts;
+    }
+
+    std::vector<std::string> shared_elements(json m1, json m2){    
+        return shared_elements(get_keys(m1), get_keys(m2));
     }
 
     void calc_dif(json lj, json cj, json &res, std::string res_name){
@@ -94,49 +106,23 @@ class Difference{
             res[res_name] = "M";
         }
         else{
-            // Модификация файлов
-            if(lj.size() == cj.size()){
-                for(auto &[key, val] : lj.items()){
-                    if(val.is_array() || val.is_string()){
-                        continue;
-                    }
-                    if(!equal_unit(lj.at(key), cj.at(key))){
-                        res[res_name][key] = json::object();
-                        calc_dif(lj.at(key), cj.at(key), res[res_name], key);
-                    }
-                }
+            std::vector<std::string> deleted_files = exluding_dif(lj, cj);
+            std::vector<std::string> added_files = exluding_dif(cj, lj);
+            for(std::string &name : deleted_files){
+                res[res_name][name] = "D";
             }
-            else{
-                // Удаление файлов
-                if(lj.size() > cj.size()){
-                    for(auto &[key, val] : cj.items()){
-                        if(val.is_array() || val.is_string()){
-                            continue;
-                        }
-                        if(!equal_unit(lj.at(key), cj.at(key))){
-                            res[res_name][key] = json::object();
-                            calc_dif(lj.at(key), cj.at(key), res[res_name], key);
-                        }
-                    }
-                    auto deleted_units = exluding_dif(lj, cj);
-                    for(int i = 0; i < deleted_units.size(); i++){
-                        res[res_name][deleted_units[i]] = "D";
-                    }
+            for(std::string &name : added_files){
+                res[res_name][name] = "A";
+            }
+            std::vector<std::string> shared_files = shared_elements(lj, cj);
+            // Модификация файлов
+            for(auto &key : shared_files){
+                if(lj.at(key).is_array() || lj.at(key).is_string()){
+                    continue;
                 }
-                else{
-                    for(auto &[key, val] : lj.items()){
-                        if(val.is_array() || val.is_string()){
-                            continue;
-                        }
-                        if(!equal_unit(lj.at(key), cj.at(key))){
-                            res[res_name][key] = json::object();
-                            calc_dif(lj.at(key), cj.at(key), res[res_name], key);
-                        }
-                    }
-                    auto created_units = exluding_dif(cj, lj);
-                    for(int i = 0; i < created_units.size(); i++){
-                        res[res_name][created_units[i]] = "A";
-                    }
+                if(!equal_unit(lj.at(key), cj.at(key))){
+                    res[res_name][key] = json::object();
+                    calc_dif(lj.at(key), cj.at(key), res[res_name], key);
                 }
             }
         }
