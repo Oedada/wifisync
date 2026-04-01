@@ -1,16 +1,16 @@
 #include <net/if.h>
+#include <string>
 #include <ifaddrs.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 
-const int PORT = 12345;
-const int SLEEP_TIME = 200000;
-
 class UdpBroadcast{
     public:
         sockaddr_in other_addr{};
+        std::string other_uuid;
+        std::string other_name;
         UdpBroadcast(int p);
         void send_broadcast();
 
@@ -24,7 +24,8 @@ class UdpBroadcast{
         bool is_ready_to_recv();
         void calculate_broadcast_addr(struct ifaddrs* ifa, sockaddr_in &baddr);
         bool is_suitable_interface_name(char *name);
-        const char* Message;
+        std::string Message;
+        std::string Response;
         int broadcast_sock = socket(AF_INET, SOCK_DGRAM, 0);
         sockaddr_in own_addr{};
         sockaddr_in local_addr{};

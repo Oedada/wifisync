@@ -39,7 +39,6 @@ namespace env{
     }
     inline const std::string get_uuid(){
         std::ifstream fin(get_data_path(constants::UUID_FILE));
-        std::cout << get_data_path(constants::UUID_FILE);
         if(!fin){
             std::cerr << "aaaaaaaaaa";
         }

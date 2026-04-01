@@ -64,10 +64,10 @@ TCPSocket create_connect(ConnectData data){
 //-----------//
 
 TCPSocket broadcast_and_tcp_connect(ConnectData &d){
-    UdpBroadcast br(PORT);
+    UdpBroadcast br(constants::BROADCAST_PORT);
     while(!br.recieve()){
         br.send_broadcast();
-        usleep(SLEEP_TIME);
+        usleep(constants::SLEEP_TIME);
     }
     if(br.is_own_ip_bigger()){
         d.m = Mode::Server;

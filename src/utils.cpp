@@ -1,6 +1,13 @@
 #include <cstdint>
+#include <fstream>
 #include <stdexcept>
 #include <string>
+#include <nlohmann/json.hpp>
+#include <filesystem>
+namespace fs = std::filesystem;
+using json = nlohmann::json;
+
+
 
 void catch_error(int return_code,std::string error_message){
     if(return_code != 1){
@@ -34,4 +41,29 @@ uint16_t fromBytes16(unsigned char* in_b){
         x |= (uint16_t)in_b[1-i] << i*2;
     }
     return x;
+}
+
+json read_json(fs::path path, bool not_exists_create){
+    if(!fs::exists(path)){
+        if(not_exists_create){
+            std::fstream fout(path);
+            fout << "{}";
+        }
+        if(!fs::is_regular_file(path)){
+            throw std::runtime_error(std::string("Can't read json, file is uncorrect: ") + std::string(path));
+        }
+    }
+    json j;
+    std::ifstream fin(path);
+    fin >> j;
+    return j;
+}
+
+void write_json(fs::path path, json j){
+    if(!fs::exists(path.parent_path())){
+        throw std::runtime_error("Can't write json, file dir is uncorrect");
+    }
+    std::ofstream fout(path);
+    std::string jstring = j.dump();
+    fout.write(jstring.c_str(), jstring.size());
 }

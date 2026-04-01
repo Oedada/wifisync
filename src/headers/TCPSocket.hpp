@@ -10,6 +10,7 @@
 
 class TCPSocket{
     public:
+        TCPSocket() noexcept : sock(-1){}
         TCPSocket(const TCPSocket&) = delete;
         TCPSocket& operator=(const TCPSocket&) = delete;
 
@@ -40,6 +41,7 @@ class TCPSocket{
         ~TCPSocket();
 
     private:
+        void check_sock();
         int sock;
 };
 

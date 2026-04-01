@@ -8,7 +8,6 @@
 
 void calculate_and_write_uuid(){
     fs::path file_path = env::get_data_path(constants::UUID_FILE);
-    std::cout << file_path;
     if(!fs::exists(file_path)){
         std::ofstream fout(file_path);
         std::mt19937 rng{std::random_device{}()};

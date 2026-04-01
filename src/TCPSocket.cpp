@@ -16,11 +16,19 @@
 
 namespace fs = std::filesystem;
 
+void TCPSocket::check_sock(){
+    if(sock == -1){
+        throw std::runtime_error("Socket not initialized!");
+    }
+}
+
 void TCPSocket::send(const std::vector<char> &buf, const size_t size){
+    check_sock();
     ::send(sock, buf.data(), size, 0);
 }
 
 size_t TCPSocket::receive(void *data, size_t size){
+    check_sock();
     size_t total = 0;
     char* ptr = static_cast<char*>(data);
     while(total < size){
@@ -37,6 +45,7 @@ size_t TCPSocket::receive(void *data, size_t size){
 }
 
 void TCPSocket::smart_send_msg(const std::vector<char> &msg){
+    check_sock();
     unsigned char size_bytes[8];
     if ((uint64_t)msg.size() > constants::MAX_ALLOWED_SIZE){
         throw std::runtime_error("Can't send message, it's too large");
@@ -47,6 +56,7 @@ void TCPSocket::smart_send_msg(const std::vector<char> &msg){
 }
 
 std::vector<unsigned char> TCPSocket::smart_recv_msg(){
+    check_sock();
     unsigned char size_bytes[sizeof(uint64_t)];
     receive(size_bytes, sizeof(uint64_t));
     uint64_t data_size = fromBytes64(size_bytes);
@@ -59,6 +69,7 @@ std::vector<unsigned char> TCPSocket::smart_recv_msg(){
 }
 
 void TCPSocket::send_file(std::ifstream& fin, uint64_t file_size){
+    check_sock();
     std::vector<char> buf(constants::BUFFER_SIZE);
     unsigned char file_size_bytes[sizeof(uint64_t)];
     toBytes(file_size, file_size_bytes);
@@ -74,6 +85,7 @@ void TCPSocket::send_file(std::ifstream& fin, uint64_t file_size){
 }
 
 void TCPSocket::recv_file(std::ofstream& fout){
+    check_sock();
     std::vector<char> buf(constants::BUFFER_SIZE);
     unsigned char file_size_bytes[sizeof(uint64_t)];
     receive(file_size_bytes, sizeof(uint64_t));
@@ -95,6 +107,7 @@ void TCPSocket::recv_file(std::ofstream& fout){
 }
 
 void TCPSocket::send_file_with_name(fs::path file_path){
+    check_sock();
     file_path = fs::weakly_canonical(file_path);
     if(!fs::exists(file_path) || !fs::is_regular_file(file_path)){
         throw std::runtime_error("Invalid file path for send with name");
@@ -112,7 +125,7 @@ void TCPSocket::send_file_with_name(fs::path file_path){
 
 
 std::filesystem::path TCPSocket::recv_file_with_name(std::filesystem::path dir_path){
-
+    check_sock();
     dir_path = fs::weakly_canonical(dir_path);
     if(!fs::exists(dir_path) || !fs::is_directory(dir_path)){
         throw std::runtime_error("Inavalid directory path for receive file with name");

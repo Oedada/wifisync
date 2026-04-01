@@ -1,4 +1,3 @@
-#include <cstdint>
 #include <iostream>
 #include <fstream>
 #include <filesystem>
@@ -15,6 +14,8 @@
 #include "headers/ed25519.hpp"
 #include "headers/TCPSocket.hpp"
 #include "headers/difference.hpp"
+#include "headers/broadcast.hpp"
+
 using json = nlohmann::json;
 
 void test_hash(){
@@ -153,9 +154,17 @@ void test_x_ed_25519_file_trans(int argc, char** argv){
 
 
 
-int main(int argc, char** argv){
-    std::cout << "Working" << "\n";
-    init();
-    
-    return 0;
-}
+// int main(int argc, char** argv){
+//     std::cout << "Working" << "\n";
+//     init();
+//     UdpBroadcast br(constants::BROADCAST_PORT);
+//     while(!br.recieve()){
+//         br.send_broadcast();
+//         usleep(constants::SLEEP_TIME);
+//     }
+//     std::string last_uuid = br.other_uuid;
+//     print_ip(br.other_addr);
+//     printf("Name: %s\nUuid: %s\n", br.other_name.c_str(), br.other_uuid.c_str());
+//     // if(br.is_own_ip_bigger())
+//     return 0;
+// }
