@@ -9,13 +9,13 @@ using json = nlohmann::json;
 
 class Difference{
     public: 
+        Difference(std::filesystem::path file_name, json last_tree, json current_tree);
+        void calculate_difference();
+    private:
         json ltree;
         json ctree;
         json dif;
         std::filesystem::path fname;
-        Difference(std::filesystem::path file_name, json last_tree, json current_tree);
-        void calculate_difference();
-    private:
         std::array<unsigned char, constants::HASH_BYTE_LENGTH> get_hash_from_json(const json &j);
         bool equal_unit(const json& l,const json& c);
         std::vector<std::string> get_keys(json j);

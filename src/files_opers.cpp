@@ -8,6 +8,7 @@
 #include "headers/hash.hpp"
 #include "headers/files_opers.hpp"
 #include "headers/constants.hpp"
+#include "headers/utils.hpp"
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -26,15 +27,16 @@ namespace fs = std::filesystem;
     }
 
     void Units::set_unit(const fs::path &p, bool ignore_registred){
-        if(!fs::exists(p)){
-            throw std::runtime_error(std::string("Directory ") + p.string() + " not exists");
+        fs::path np = fs::weakly_canonical(p);
+        if(!fs::exists(np)){
+            throw std::runtime_error(std::string("Directory ") + np.string() + " not exists");
         } 
-        if(is_registred(p) & !ignore_registred){
-            throw std::runtime_error(std::string("Unit ") + p.string() + " is already registred");
+        if(is_registred(np) & !ignore_registred){
+            throw std::runtime_error(std::string("Unit ") + np.string() + " is already registred");
         }
-        create_json_file_list(p, json_tree[p], true);
-        std::string str = p.string();
-        write_hash(p, json_tree[p], std::vector<unsigned char> (str.begin(), str.end()), true);
+        create_json_file_list(np, json_tree[np], true);
+        std::string str = np.string();
+        write_hash(np, json_tree[np], std::vector<unsigned char> (str.begin(), str.end()), true);
         save();
     }
 
@@ -93,13 +95,14 @@ namespace fs = std::filesystem;
                 }
             }
         }
-        throw std::runtime_error("Path is uncorrect");
+        throw std::runtime_error("Path is uncorrect this");
     }
 
     json* Units::get_unit_from_path(const fs::path &p){
+        fs::path np = fs::weakly_canonical(p);
         json* unit_pointer;
         std::vector<std::string> remaining_path;
-        find_root(p, unit_pointer, remaining_path);
+        find_root(np, unit_pointer, remaining_path);
         if(remaining_path.size() == 0){
             return unit_pointer;
         }
@@ -114,21 +117,14 @@ namespace fs = std::filesystem;
         return unit_pointer;
     }
 
-    std::vector<unsigned char> Units::ulong_to_uchar(unsigned long count){
-        std::vector<unsigned char> chars;
-        while(count != 0){
-            chars.push_back(count % 256);
-            count /= 256;
-        }
-        return chars;
-    }
-
     void Units::write_hash(fs::path path, json& json_field, std::vector<unsigned char> json_field_key, bool is_first_call){
         if (is_first_call){
             path = fs::absolute(path);
         }
         Hash unit_hash;
-        unit_hash.update(ulong_to_uchar(json_field_key.size()));
+        std::vector<unsigned char> bytes_of_size(8, 0);
+        toBytes(json_field.size(), bytes_of_size.data());
+        unit_hash.update(bytes_of_size);
         unit_hash.update(json_field_key);
         if(json_field[constants::JSON_FIELD_NAME_TYPE] == constants::UNIT_TYPE_DIR) {
             for(const auto& [key, val] : json_field.items()){

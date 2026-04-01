@@ -14,7 +14,6 @@ class Units{
         // ~Units();
     private:
         void save();
-        std::vector<unsigned char> ulong_to_uchar(unsigned long count);
         void write_hash(std::filesystem::path path, nlohmann::json& json_field, std::vector<unsigned char> json_field_key, bool is_first_call);
         std::vector<std::string> vector_from_path(const std::filesystem::path &p);
         void find_root(const std::filesystem::path &p, nlohmann::json* &unit_path_part_pointer, std::vector<std::string> &remaining_path_link);

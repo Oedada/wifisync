@@ -5,12 +5,14 @@
 #include <openssl/rand.h>
 #include <sys/socket.h>
 #include <vector>
+#include "headers/constants.hpp"
 #include "headers/hash.hpp"
 #include "headers/files_opers.hpp"
 #include "headers/server.hpp"
 #include "headers/x25519.hpp"
 #include "headers/ed25519.hpp"
 #include "headers/TCPSocket.hpp"
+#include "headers/difference.hpp"
 using json = nlohmann::json;
 
 void test_hash(){
@@ -149,11 +151,26 @@ void test_x_ed_25519_file_trans(int argc, char** argv){
 
 
 
-int main(){
+int main(int argc, char** argv){
     std::cout << "Working" << "\n";
-    Units dir("data/test.json", false);
-    dir.set_unit("data/train", true);
-    json file_tree = dir.json_tree;
-    
+    bool server = false;
+    if(argc > 1){
+        if(argv[1][0] == 's'){
+            server = true;
+        }
+    }
+    if(server){
+        Server server(constants::TCP_PORT);
+        TCPSocket s = server.accept_conn();
+        std::ifstream fin("")
+        s.send_file()
+    }
+    else{
+        sockaddr_in addr{};
+        addr.sin_port = htons(constants::TCP_PORT);
+        inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+        addr.sin_family = AF_INET;
+        TCPSocket s = client_connect(addr);
+    }
     return 0;
 }
