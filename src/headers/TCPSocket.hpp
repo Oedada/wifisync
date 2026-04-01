@@ -35,6 +35,8 @@ class TCPSocket{
         std::vector<unsigned char> smart_recv_msg();
         void send_file(std::ifstream& fin, uint64_t file_size);
         void recv_file(std::ofstream& fout);
+        void send_file_with_name(std::filesystem::path file_path);
+        std::filesystem::path recv_file_with_name(std::filesystem::path dir_path);
         ~TCPSocket();
 
     private:

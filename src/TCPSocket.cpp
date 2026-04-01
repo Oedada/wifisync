@@ -4,6 +4,7 @@
 #include <iostream>
 #include <netinet/in.h>
 #include <stdexcept>
+#include <sys/socket.h>
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
@@ -93,6 +94,39 @@ void TCPSocket::recv_file(std::ofstream& fout){
     }
 }
 
+void TCPSocket::send_file_with_name(fs::path file_path){
+    file_path = fs::weakly_canonical(file_path);
+    if(!fs::exists(file_path) || !fs::is_regular_file(file_path)){
+        throw std::runtime_error("Invalid file path for send with name");
+    }
+    std::string file_name = file_path.filename();
+    std::ifstream fin(file_path, std::ios::binary | std::ios::ate);
+    uint64_t file_size = static_cast<uint64_t>(fin.tellg());
+    fin.seekg(0, std::ios::beg);
+    unsigned char name_size_bytes[sizeof(uint64_t)];
+    toBytes(file_name.size(), name_size_bytes);
+    ::send(sock, name_size_bytes, sizeof(uint64_t), 0); 
+    ::send(sock, file_name.data(), file_name.size(), 0);
+    send_file(fin, file_size);
+}
+
+
+std::filesystem::path TCPSocket::recv_file_with_name(std::filesystem::path dir_path){
+
+    dir_path = fs::weakly_canonical(dir_path);
+    if(!fs::exists(dir_path) || !fs::is_directory(dir_path)){
+        throw std::runtime_error("Inavalid directory path for receive file with name");
+    }
+    unsigned char name_size_bytes[sizeof(uint64_t)];
+    ::recv(sock, name_size_bytes, sizeof(uint64_t), 0);
+    uint64_t name_size = fromBytes64(name_size_bytes);
+    std::string file_name;
+    file_name.resize(name_size);
+    ::recv(sock, file_name.data(), name_size, 0);
+    std::ofstream fout((dir_path / file_name), std::ios::binary);
+    recv_file(fout);
+    return (dir_path / file_name);
+}
 
 TCPSocket::~TCPSocket(){
     if (sock >= 0)

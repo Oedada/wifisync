@@ -5,9 +5,6 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-
-const char MagicMessage[] = "Wifisync Hello Wifi";
-const char MagicResponse[] = "Wifisync Response Wifi";
 const int PORT = 12345;
 const int SLEEP_TIME = 200000;
 
@@ -27,6 +24,7 @@ class UdpBroadcast{
         bool is_ready_to_recv();
         void calculate_broadcast_addr(struct ifaddrs* ifa, sockaddr_in &baddr);
         bool is_suitable_interface_name(char *name);
+        const char* Message;
         int broadcast_sock = socket(AF_INET, SOCK_DGRAM, 0);
         sockaddr_in own_addr{};
         sockaddr_in local_addr{};

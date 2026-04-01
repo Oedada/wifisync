@@ -3,6 +3,10 @@
 #include <string>
 
 namespace constants{
+    //stable
+    inline const std::string project_name = "wifisync";
+    inline const std::string author_name = "Oedada";
+
     // cryptography
     constexpr int HASH_BYTE_LENGTH = 32;
 
@@ -18,6 +22,8 @@ namespace constants{
     inline const std::string UNIT_TYPE_FILE = "file";
     
     ///network
+    const char MagicMessage[] = "Wifisync Hello Wifi:";
+    const char MagicResponse[] = "Wifisync Response Wifi";
     inline const char* TEST_NET_IP = "192.0.2.1";
     inline const char* PING_CONNECT_TEST_IP = "8.8.8.8";
     inline const char* GLOBAL_BROADCAST_IP = "255.255.255.255";
@@ -29,7 +35,9 @@ namespace constants{
     constexpr int SIZE_HEADER_BYTES = 8;
     constexpr uint16_t BROADCAST_PORT = 12312;
     constexpr uint16_t TCP_PORT = 12345;
-    
-    // paths
-    inline const std::string KEY_DIR = "data/keys";
-}
+
+    //paths
+    inline std::string KEY_DIR = "key";
+    inline std::string UUID_FILE = "uuid.uuid";
+    inline std::string CONFIG_FILE = "config.json";
+};

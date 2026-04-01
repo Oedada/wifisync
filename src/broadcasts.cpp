@@ -10,11 +10,18 @@
 #include <unistd.h>
 #include "headers/broadcast.hpp"
 #include "headers/constants.hpp"
+#include "headers/environment.hpp"
 
 UdpBroadcast::UdpBroadcast(int p) : broadcast_port(p){
     if(broadcast_sock < 0){
         throw std::runtime_error("Can't creat socket");
     }
+    std::string msg;
+    msg.append(constants::MagicMessage);
+    msg.append(env::get_uuid());
+    msg.append(":");
+    msg.append(env::get_name());
+    Message = msg.c_str();
     // get own addr and broadcast addr
     if(!get_own_and_brcast_addr(own_addr, broadcast_addr)){
         get_own_ip();
@@ -36,7 +43,7 @@ UdpBroadcast::UdpBroadcast(int p) : broadcast_port(p){
     setsockopt(broadcast_sock, SOL_SOCKET, SO_BROADCAST, &enable, sizeof(enable));
 }
 void UdpBroadcast::send_broadcast(){
-    sendto(broadcast_sock, MagicMessage, strlen(MagicMessage), 0,(sockaddr*)&broadcast_addr, sizeof(broadcast_addr));
+    sendto(broadcast_sock, Message, strlen(Message), 0,(sockaddr*)&broadcast_addr, sizeof(broadcast_addr));
 }
 
 bool UdpBroadcast::is_suitable_interface_name(char *name){
@@ -134,14 +141,15 @@ bool UdpBroadcast::recieve(){
         ssize_t n = recvfrom(broadcast_sock, buf, sizeof(buf)-1, 0,(sockaddr*)&tmp_addr, &sender_len);
         if (n > 0) {
             if(tmp_addr.sin_addr.s_addr != own_addr.sin_addr.s_addr){
-                if(n == strlen(MagicMessage) && memcmp(buf, MagicMessage, strlen(MagicMessage)) == 0){
-                        other_addr = tmp_addr;
-                        sendto(broadcast_sock, MagicResponse, strlen(MagicResponse), 0,(sockaddr*)&other_addr, sizeof(other_addr));
-                        return true;
+                if(memcmp(buf, constants::MagicMessage, strlen(constants::MagicMessage)) == 0){
+                    std::cout << buf;
+                    other_addr = tmp_addr;
+                    sendto(broadcast_sock, constants::MagicResponse, strlen(constants::MagicResponse), 0,(sockaddr*)&other_addr, sizeof(other_addr));
+                    return true;
                 }
-                else if(n == strlen(MagicResponse) && memcmp(buf, MagicResponse, strlen(MagicResponse)) == 0){
-                        other_addr = tmp_addr;
-                        return true;
+                else if(n == strlen(constants::MagicResponse) && memcmp(buf, constants::MagicResponse, strlen(constants::MagicResponse)) == 0){
+                    other_addr = tmp_addr;
+                    return true;
                 }
             }
         }

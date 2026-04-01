@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <iostream>
 #include <fstream>
 #include <filesystem>
@@ -5,6 +6,7 @@
 #include <openssl/rand.h>
 #include <sys/socket.h>
 #include <vector>
+#include "headers/init.hpp"
 #include "headers/constants.hpp"
 #include "headers/hash.hpp"
 #include "headers/files_opers.hpp"
@@ -153,24 +155,7 @@ void test_x_ed_25519_file_trans(int argc, char** argv){
 
 int main(int argc, char** argv){
     std::cout << "Working" << "\n";
-    bool server = false;
-    if(argc > 1){
-        if(argv[1][0] == 's'){
-            server = true;
-        }
-    }
-    if(server){
-        Server server(constants::TCP_PORT);
-        TCPSocket s = server.accept_conn();
-        std::ifstream fin("")
-        s.send_file()
-    }
-    else{
-        sockaddr_in addr{};
-        addr.sin_port = htons(constants::TCP_PORT);
-        inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-        addr.sin_family = AF_INET;
-        TCPSocket s = client_connect(addr);
-    }
+    init();
+    
     return 0;
 }
