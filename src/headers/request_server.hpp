@@ -5,6 +5,7 @@
 #include <variant>
 #include <mutex>
 #include <queue>
+#include "../external_libs/cpp-httplib/httplib.h"
 #include "nlohmann/json.hpp"
 
 namespace httplib{
@@ -43,6 +44,7 @@ class TaskServer{
         SafeCmdQueue* cmd_q;
         TaskServer(SafeCmdQueue &queue);
         void start_server(int port);
+        httplib::Server svr;
 
     private:
         int parse_task_json(nlohmann::json j, tstypes::Command& cmd);

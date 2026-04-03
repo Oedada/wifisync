@@ -24,8 +24,9 @@ namespace constants{
     ///network
     const int SLEEP_TIME = 200000;
     const int TIMEOUT_TIME = 15;
-    const char MagicMessage[] = "Wifisync Hello Wifi:";
-    const char MagicResponse[] = "Wifisync Response Wifi:";
+    const char StaticBroadcastMessage[] = "Wifisync Hello Wifi:";
+    const char StaticRequestConnect[] = "Wifisync Connect Request:";
+    const char StaticResponseConnect[] = "Wifisync Connect Response:";
     inline const char* TEST_NET_IP = "192.0.2.1";
     inline const char* PING_CONNECT_TEST_IP = "8.8.8.8";
     inline const char* GLOBAL_BROADCAST_IP = "255.255.255.255";
@@ -37,6 +38,7 @@ namespace constants{
     constexpr int SIZE_HEADER_BYTES = 8;
     constexpr uint16_t BROADCAST_PORT = 12312;
     constexpr uint16_t TCP_PORT = 12345;
+    constexpr int COUNT_FIND_DEVICE = 10;
 
     //paths
     inline std::string KEY_DIR = "key";

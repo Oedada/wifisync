@@ -1,4 +1,6 @@
+#pragma once
 #include <array>
+#include <ostream>
 #include <string>
 #include <vector>
 #include <filesystem>
@@ -24,4 +26,10 @@ class Difference{
         std::vector<std::string> shared_elements(std::vector<std::string> m1, std::vector<std::string> m2);
         std::vector<std::string> shared_elements(json m1, json m2);
         void calc_dif(json lj, json cj, json &res, std::string res_name);
+    friend std::ostream& operator<<(std::ostream & os, const Difference obj);
 };
+
+inline std::ostream& operator<<(std::ostream &os, Difference obj){
+    os << obj.dif;
+    return os;
+}

@@ -12,7 +12,6 @@
 #include <queue>
 #include "external_libs/cpp-httplib/httplib.h"
 #include <nlohmann/json.hpp>
-#include "headers/broadcast.hpp"
 #include "headers/request_server.hpp"
 #include "headers/constants.hpp"
 
@@ -36,14 +35,21 @@ tstypes::Command SafeCmdQueue::get(){
 
 TaskServer::TaskServer(SafeCmdQueue &queue) : cmd_q(&queue){}
 void TaskServer::start_server(int port){
-    httplib::Server svr;
 
     // GET /hello
-    svr.Get("/", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content("Wifisync http server's working", "text/plain");
-    });
+    svr.set_mount_point("/", "/home/oedada/Projects/apps/Wifisync/wifisync/src/gui/static");
 
     svr.Post("/tasks", [this](const httplib::Request& req, httplib::Response& res){this->get_tasks(req, res);});
+
+    svr.Get("/api", [](const httplib::Request&, httplib::Response& res) {
+        nlohmann::json j = {
+            {"name", "Oedada"},
+            {"age", 18},
+            {"city", "Frankfurt"}
+        };
+
+        res.set_content(j.dump(), "application/json");
+    });
 
     printf("Server running on http://%s:%i\n",constants::LOCAL_IP_ADDR, port);
     svr.listen(constants::LOCAL_IP_ADDR, port); // блокирующий вызов

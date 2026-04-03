@@ -8,19 +8,22 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <utility>
 #include "headers/broadcast.hpp"
 #include "headers/constants.hpp"
 #include "headers/environment.hpp"
 
 UdpBroadcast::UdpBroadcast(int p) : broadcast_port(p){
     if(broadcast_sock < 0){
-        throw std::runtime_error("Can't creat socket");
+        throw std::runtime_error("Can't create socket");
     }
-    Message = constants::MagicMessage + env::get_uuid() + ":" + env::get_name();
-    Response = constants::MagicResponse + env::get_uuid() + ":" + env::get_name();
+    std::string uuid_and_name = env::get_uuid() + ":" + env::get_name();
+    BroadcastMsg = constants::StaticBroadcastMessage + uuid_and_name;
+    ConnectRequest = constants::StaticRequestConnect + uuid_and_name;
+    ConnectResponse = constants::StaticResponseConnect + uuid_and_name;
     // get own addr and broadcast addr
     if(!get_own_and_brcast_addr(own_addr, broadcast_addr)){
-        get_own_ip();
+        get_own_ip_legasy();
         inet_pton(AF_INET, constants::GLOBAL_BROADCAST_IP, &broadcast_addr.sin_addr); 
     }
     // broadcast addr
@@ -38,10 +41,134 @@ UdpBroadcast::UdpBroadcast(int p) : broadcast_port(p){
     int enable = 1;
     setsockopt(broadcast_sock, SOL_SOCKET, SO_BROADCAST, &enable, sizeof(enable));
 }
-void UdpBroadcast::send_broadcast(){
-    sendto(broadcast_sock, Message.data(), Message.size(), 0,(sockaddr*)&broadcast_addr, sizeof(broadcast_addr));
+
+void UdpBroadcast::read_received_data(){
+    if(is_ready_to_recv()){
+        char buf[constants::BUFFER_SIZE];
+        sockaddr_in tmp_addr;
+        socklen_t sender_len = sizeof(tmp_addr);
+        ssize_t n;
+        while(is_ready_to_recv()){
+            n = recvfrom(broadcast_sock, buf, sizeof(buf)-1, 0,(sockaddr*)&tmp_addr, &sender_len);
+        }
+        if(n > 0){
+            recv_size = n;
+            memcpy(recv_buf, buf, constants::BUFFER_SIZE);
+            tmp_recv_addr = tmp_addr;
+        }
+    }
 }
 
+void UdpBroadcast::send(const enum Message &msg, sockaddr_in addr){
+    switch (msg) {
+        case(Message::Broadcast):
+            sendto(broadcast_sock, BroadcastMsg.data(), BroadcastMsg.size(), 0,(sockaddr*)&addr, sizeof(addr));
+            break;
+        case(Message::ConnectRequest):
+            sendto(broadcast_sock, ConnectRequest.data(), ConnectRequest.size(), 0,(sockaddr*)&addr, sizeof(addr));
+            break;
+        case(Message::ConnectResponse):
+            sendto(broadcast_sock, ConnectResponse.data(), ConnectResponse.size(), 0,(sockaddr*)&addr, sizeof(addr));
+            break;
+    }
+}
+
+std::pair<bool, std::string> UdpBroadcast::recv(const enum Message &msg){
+    if(tmp_recv_addr.sin_addr.s_addr != own_addr.sin_addr.s_addr){
+        switch (msg) {
+        case(Message::Broadcast):
+            if(recv_size > strlen(constants::StaticBroadcastMessage) && memcmp(recv_buf, constants::StaticBroadcastMessage, strlen(constants::StaticBroadcastMessage)) == 0){
+                return add_to_found_devices_if_not_own_uuid(recv_buf, recv_size);
+            }
+            break;
+        case(Message::ConnectRequest):
+            if(recv_size > strlen(constants::StaticRequestConnect) && memcmp(recv_buf, constants::StaticRequestConnect, strlen(constants::StaticRequestConnect)) == 0){
+                return add_to_found_devices_if_not_own_uuid(recv_buf, recv_size);
+            }
+            break;
+        case(Message::ConnectResponse):
+            if(recv_size > strlen(constants::StaticResponseConnect) && memcmp(recv_buf, constants::StaticResponseConnect, strlen(constants::StaticResponseConnect)) == 0){
+                return add_to_found_devices_if_not_own_uuid(recv_buf, recv_size);
+            }
+            break;
+    }
+    }
+    return std::make_pair(false, "");
+}
+
+sockaddr_in UdpBroadcast::get_broadcast_addr(){
+    return broadcast_addr;
+}
+
+std::map<std::string, std::pair<sockaddr_in, std::string>> UdpBroadcast::get_found_devices(){
+    return found_devices;
+}
+
+bool UdpBroadcast::is_own_ip_bigger(sockaddr_in addr){
+    return own_addr.sin_addr.s_addr > addr.sin_addr.s_addr;
+}
+
+
+UdpBroadcast::~UdpBroadcast(){ 
+    close(broadcast_sock);
+}
+
+//----------//
+// Utilites //
+//----------//
+bool UdpBroadcast::is_ready_to_recv(){
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(broadcast_sock, &readfds);
+    
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = constants::SOCKET_CHECK_TIMEOUT;
+    
+    int ret = select(broadcast_sock + 1, &readfds, nullptr, nullptr, &timeout);
+    
+    if (ret < 0) {
+        perror("Error: select");
+        return false;
+    }
+    if(ret > 0 && FD_ISSET(broadcast_sock, &readfds)){
+        return true;
+    }
+    return false;
+}
+
+std::pair<std::string, std::string> UdpBroadcast::parse_msg(const char *buf, const int &size){
+    int colon_counter = 0;
+    std::string uuid;
+    std::string name;
+    for(int i = 0; i < size; i++){
+        if(colon_counter == 1 && buf[i] != ':'){
+            uuid += buf[i];
+        }
+        else if(colon_counter == 2 && buf[i] != ':'){
+            name += buf[i];
+        }
+        if(buf[i] == ':'){
+            colon_counter++;
+        }
+    }
+    return std::make_pair(uuid, name);
+}
+
+std::pair<bool, std::string> UdpBroadcast::add_to_found_devices_if_not_own_uuid(char* buf, size_t size){
+    auto [uuid, name] = parse_msg(buf, size);
+    if(uuid != env::get_uuid()){
+        if(!found_devices.contains(uuid)){
+            found_devices[uuid] = std::make_pair(tmp_recv_addr, name);   
+        }
+        return std::make_pair(true, uuid);
+    }
+    return std::make_pair(false, "");
+}
+
+//----------------//
+// Ip calculating //
+//----------------//
 bool UdpBroadcast::is_suitable_interface_name(char *name){
     std::string n = name;
     return !(n.find("lo") != std::string::npos ||
@@ -52,11 +179,6 @@ bool UdpBroadcast::is_suitable_interface_name(char *name){
             n.find("br-") != std::string::npos);
 }
 
-void print_ip(sockaddr_in addr){
-    char ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &addr.sin_addr, ip, sizeof(ip));
-    std::cout << " IP: " << ip << std::endl;
-}
 
 void UdpBroadcast::calculate_broadcast_addr(struct ifaddrs* ifa, sockaddr_in &baddr){
     auto* addr = (struct sockaddr_in*)ifa->ifa_addr;
@@ -69,7 +191,7 @@ void UdpBroadcast::calculate_broadcast_addr(struct ifaddrs* ifa, sockaddr_in &ba
 
 bool UdpBroadcast::get_own_and_brcast_addr(sockaddr_in &own_addr, sockaddr_in &baddr){
     struct ifaddrs* ifaddr;
-
+    
     if(getifaddrs(&ifaddr) == -1){
         throw std::runtime_error("Can't get ifaddr");
     }
@@ -90,13 +212,13 @@ bool UdpBroadcast::get_own_and_brcast_addr(sockaddr_in &own_addr, sockaddr_in &b
     return false;
 }
 
-void UdpBroadcast::get_own_ip(){
+void UdpBroadcast::get_own_ip_legasy(){
     int tmp_sock = socket(AF_INET, SOCK_DGRAM, 0);
     sockaddr_in tmp_addr{};
     tmp_addr.sin_family = AF_INET;
     tmp_addr.sin_port = htons(53);
     inet_pton(AF_INET, constants::PING_CONNECT_TEST_IP, &tmp_addr.sin_addr);
-
+    
     if(connect(tmp_sock, (sockaddr*)&tmp_addr, sizeof(tmp_addr)) != 0){
         inet_pton(AF_INET, constants::TEST_NET_IP, &tmp_addr.sin_addr);
         if(connect(tmp_sock, (sockaddr*)&tmp_addr, sizeof(tmp_addr)) != 0){
@@ -108,86 +230,8 @@ void UdpBroadcast::get_own_ip(){
     close(tmp_sock);
 }
 
-bool UdpBroadcast::is_ready_to_recv(){
-    fd_set readfds;
-    FD_ZERO(&readfds);
-    FD_SET(broadcast_sock, &readfds);
-
-    struct timeval timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_usec = constants::SOCKET_CHECK_TIMEOUT;
-    
-    int ret = select(broadcast_sock + 1, &readfds, nullptr, nullptr, &timeout);
-
-    if (ret < 0) {
-        perror("Error: select");
-        return false;
-    }
-    if(ret > 0 && FD_ISSET(broadcast_sock, &readfds)){
-        return true;
-    }
-    return false;
-}
-
-bool UdpBroadcast::recieve(){
-    if(is_ready_to_recv()){
-        char buf[constants::BUFFER_SIZE];
-        sockaddr_in tmp_addr;
-        socklen_t sender_len = sizeof(tmp_addr);
-        ssize_t n = recvfrom(broadcast_sock, buf, sizeof(buf)-1, 0,(sockaddr*)&tmp_addr, &sender_len);
-        if (n > 0) {
-            if(tmp_addr.sin_addr.s_addr != own_addr.sin_addr.s_addr){
-                std::string uuid;
-                int colon_counter = 0;
-                if(n > strlen(constants::MagicMessage) && memcmp(buf, constants::MagicMessage, strlen(constants::MagicMessage)) == 0){
-                    
-                    for(int i = 0; i < n; i++){
-                        if(colon_counter == 1 && buf[i] != ':'){
-                            uuid += buf[i];
-                        }
-                        else if(colon_counter == 2 && buf[i] != ':'){
-                            other_name += buf[i];
-                        }
-                        if(buf[i] == ':'){
-                            colon_counter++;
-                        }
-                    }
-                    if(env::get_uuid() != uuid){
-                        other_uuid = uuid;
-                        other_addr = tmp_addr;
-                        sendto(broadcast_sock, Response.data(), Response.size(), 0,(sockaddr*)&other_addr, sizeof(other_addr));
-                        return true;
-                    }
-                }
-                else if(n > strlen(constants::MagicResponse) && memcmp(buf, constants::MagicResponse, strlen(constants::MagicResponse)) == 0){
-                    for(int i = 0; i < n; i++){
-                        if(colon_counter == 1 && buf[i] != ':'){
-                            uuid += buf[i];
-                        }
-                        else if(colon_counter == 2 && buf[i] != ':'){
-                            other_name += buf[i];
-                        }
-                        if(buf[i] == ':'){
-                            colon_counter++;
-                        }
-                    }
-                    if(env::get_uuid() != uuid){
-                        other_uuid = uuid;
-                        other_addr = tmp_addr;
-                        return true;
-                    }
-                }
-            }
-        }
-    }
-    return false;
-}
-
-bool UdpBroadcast::is_own_ip_bigger(){
-    return own_addr.sin_addr.s_addr > other_addr.sin_addr.s_addr;
-}
-
-
-UdpBroadcast::~UdpBroadcast(){ 
-    close(broadcast_sock);
+void print_ip(sockaddr_in addr){
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &addr.sin_addr, ip, sizeof(ip));
+    std::cout << " IP: " << ip << std::endl;
 }

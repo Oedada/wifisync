@@ -1,121 +1,90 @@
-// #include <chrono>
-#include <iostream>
 #include <openssl/rand.h>
-#include "headers/server.hpp"
 #include "headers/x25519.hpp"
 #include "headers/ed25519.hpp"
-#include <optional>
-#include <stdexcept>
 #include <unistd.h>
 #include <variant>
-#include "headers/TCPSocket.hpp"
 #include <thread>
 #include <nlohmann/json.hpp>
-#include "headers/broadcast.hpp"
-#include <fstream>
 #include "headers/request_server.hpp"
-#include "headers/constants.hpp"
+#include "headers/sync.hpp"
 
 
 using json = nlohmann::json;
 using Arg = std::variant<bool, int, std::string>;
 
-enum class Mode{
-    Server,
-    Client
-};
+// Глобальная очередь сообщений
+std::vector<httplib::Response*> clients;
+Sync session;
 
-struct ConnectData{
-    Mode m;
-    sockaddr_in addr;
-};
 SafeCmdQueue cmd_q;
-
-
-TCPSocket create_connect(ConnectData data){
-    if(data.m == Mode::Server){
-        Server ftr(constants::TCP_PORT);
-        while(true){
-        //TODO: добавить таймаут
-            if(ftr.is_ready_to_accept()){
-                TCPSocket s = ftr.accept_conn();
-                // print_ip(ftr.client_addr);
-                // print_ip(data.addr);
-                if(ftr.client_addr.sin_addr.s_addr == data.addr.sin_addr.s_addr){
-                    return s;
-                }
-                else{
-                    std::cerr << "Ip doesn't correct";
-                }
-            }
-        }
-    }
-    else if(data.m == Mode::Client){
-        TCPSocket s = client_connect(data.addr);
-        return s;
-    }
-    else{
-        throw std::runtime_error("Unkown mode");
-    }
-}
 
 //-----------//
 //Thread work//
 //-----------//
 
-TCPSocket broadcast_and_tcp_connect(ConnectData &d){
-    UdpBroadcast br(constants::BROADCAST_PORT);
-    while(!br.recieve()){
-        br.send_broadcast();
+void thread_worker(){
+    while(!session.is_connecting_process){
+        session.broadcast.send(Message::Broadcast, session.broadcast.get_broadcast_addr());
+        session.broadcast.read_received_data();
+        auto [succes, uuid] = session.broadcast.recv(Message::ConnectRequest);
+        if(succes){
+            for(auto client : clients){
+                std::ostringstream s;
+                s << session.broadcast.get_found_devices()[uuid].second << " try to connect with you" << "\n\n";
+                client->write(s.str());
+            }
+            session.broadcast.send(Message::ConnectResponse, session.broadcast.get_found_devices()[uuid].first);
+        }
         usleep(constants::SLEEP_TIME);
     }
-    if(br.is_own_ip_bigger()){
-        d.m = Mode::Server;
-    }
-    else{
-        d.m = Mode::Client;
-    }
-    d.addr = br.other_addr;
-    TCPSocket sock = create_connect(d);
-    return sock;
 }
 
+int main() {
+    TaskServer ts(cmd_q);
+    ts.svr.Get("/devices", [&](const httplib::Request&, httplib::Response& res) {
+        json j = session.find_devices();
+        res.set_content(j.dump(), "application/json");
+    });
 
-void thread_worker(){
-    std::optional<TCPSocket> sock;
-    while(true){
-        tstypes::Command cmd = cmd_q.get();
+    ts.svr.Post("/connect", [&](const httplib::Request& req, httplib::Response& res) {
+        auto j = json::parse(req.body);
+        std::string uuid = j["uuid"];
+        // 🔧 Тут подключаемся к устройству (ядро)
+        bool succes = session.connect_to_device(uuid); // твоя функция
 
-        if(cmd.task == tstypes::Tasks::Connect){
-            ConnectData d;
-            sock = broadcast_and_tcp_connect(d);
-            if(d.m == Mode::Client){
-                std::cout << ">>>Role: Client\n";
-                std::string msg = "Hello world";
-                std::vector<char> vmsg(msg.begin(), msg.end());
-                sock->smart_send_msg(vmsg);
-                std::ofstream fout("data/test_send_file.txt");
-                sock->recv_file(fout);
-            }
-            else{
-                std::cout << ">>>Role: Server\n";
-                std::vector<unsigned char> vmsg = sock->smart_recv_msg();
-                std::string msg(vmsg.begin(), vmsg.end());
-                std::cout << "Message: " << msg << "\n";
-                std::ifstream fin("data/test_out_text.txt", std::ios::binary | std::ios::ate);
-                uint64_t fsize = fin.tellg();
-                fin.seekg(0);
-                sock->send_file(fin, fsize);
-            }
+        json response;
+        if(succes){
+            response["message"] = "Успешно подключено к " + uuid;
         }
-    }
-}
+        else{
+            response["message"] = "Не получилось, не фортануло";
+        }
+        res.set_content(response.dump(), "application/json");
+    });
 
-// int main() {
-//     TaskServer ts(cmd_q);
-//     std::thread api_thread([&ts](){return ts.start_server(5000);});
-//     std::thread thread_work_thread(thread_worker);
+    ts.svr.Get("/sse", [](const httplib::Request&, httplib::Response& res) {
+        res.set_header("Content-Type", "text/event-stream");
+        res.set_header("Cache-Control", "no-cache");
+        res.set_header("Connection", "keep-alive");
+
+        // Цикл держит соединение открытым
+        for(int i = 0; i < 5; ++i) {
+            std::ostringstream msg;
+            msg << "data: Событие " << i << "\n\n";
+
+            // res.body нельзя менять многократно, поэтому используем flush
+            res.set_content(msg.str(), "text/event-stream");
+
+            // даём время браузеру получить данные
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+
+        // После выхода из цикла соединение закроется автоматически
+    });
+
+    std::thread api_thread([&ts](){return ts.start_server(5000);});
+    std::thread thread_work_thread(thread_worker);
     
-//     api_thread.join();
-//     thread_work_thread.join();
-// }
+    api_thread.join();
+    thread_work_thread.join();
+}
