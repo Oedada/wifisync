@@ -1,0 +1,3 @@
+[submodule "src/external_libs/stduuid"]
+	path = src/external_libs/stduuid
+	url = https://github.com/mariusbancila/stduuid.git
