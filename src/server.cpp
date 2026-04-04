@@ -1,4 +1,3 @@
-#include <iostream>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -14,6 +13,8 @@
             server_addr.sin_port = htons(server_port);
             server_addr.sin_family = AF_INET;
             server_addr.sin_addr.s_addr = INADDR_ANY;
+            bind_sock();
+            listen_addr();
         }
 
         void Server::bind_sock(){
@@ -48,8 +49,6 @@
         }
 
         TCPSocket Server::accept_conn(){
-            bind_sock();
-            listen_addr();
             client_fd = ::accept(server_fd, (sockaddr*)&client_addr, &client_addr_len);
             if(client_fd == -1){
                 throw std::runtime_error("Error with accept connection\n");

@@ -1,4 +1,5 @@
 #include <openssl/rand.h>
+#include "headers/broadcast.hpp"
 #include "headers/x25519.hpp"
 #include "headers/ed25519.hpp"
 #include <unistd.h>
@@ -22,18 +23,28 @@ SafeCmdQueue cmd_q;
 //Thread work//
 //-----------//
 
+bool is_yes(){
+    std::string input;
+    std::cin >> input;
+    if(input == "y"){
+        return true;
+    }
+    return false;
+}
+
 void thread_worker(){
     while(!session.is_connecting_process){
         session.broadcast.send(Message::Broadcast, session.broadcast.get_broadcast_addr());
         session.broadcast.read_received_data();
+        session.broadcast.recv(Message::Broadcast);
         auto [succes, uuid] = session.broadcast.recv(Message::ConnectRequest);
         if(succes){
-            for(auto client : clients){
-                std::ostringstream s;
-                s << session.broadcast.get_found_devices()[uuid].second << " try to connect with you" << "\n\n";
-                client->write(s.str());
+            printf("Are you want to connect to %s(%s)", session.broadcast.get_found_devices()[uuid].second.c_str(), uuid.c_str());
+            if(is_yes()){
+                session.broadcast.send(Message::ConnectResponse, session.broadcast.get_found_devices()[uuid].first);
+                session.create_tcp_connection(uuid);
+                break;
             }
-            session.broadcast.send(Message::ConnectResponse, session.broadcast.get_found_devices()[uuid].first);
         }
         usleep(constants::SLEEP_TIME);
     }
@@ -42,23 +53,34 @@ void thread_worker(){
 int main() {
     TaskServer ts(cmd_q);
     ts.svr.Get("/devices", [&](const httplib::Request&, httplib::Response& res) {
-        json j = session.find_devices();
-        res.set_content(j.dump(), "application/json");
+        json ret;
+        for(const auto & [key, val] : session.broadcast.get_found_devices()){
+            ret[val.second] = key;
+        }
+        res.set_content(ret.dump(), "application/json");
     });
 
     ts.svr.Post("/connect", [&](const httplib::Request& req, httplib::Response& res) {
         auto j = json::parse(req.body);
         std::string uuid = j["uuid"];
         // 🔧 Тут подключаемся к устройству (ядро)
-        bool succes = session.connect_to_device(uuid); // твоя функция
+        int ret_code = session.connect(uuid); // твоя функция
 
         json response;
-        if(succes){
-            response["message"] = "Успешно подключено к " + uuid;
-        }
-        else{
-            response["message"] = "Не получилось, не фортануло";
-        }
+        switch(ret_code){
+            case(0):
+                response["message"] = "Успешное подключение к " + session.broadcast.get_found_devices()[uuid].second + "(" + uuid + ")";
+                break;
+            case(-1):
+                response["message"] = "Не получилось, не фортануло";
+                break;
+            case(-2):
+            case(-3):
+                response["message"] = "Истекло время ожидания ответа";
+                break;
+            default:
+                response["message"] = "Unknow status!!!";
+         }
         res.set_content(response.dump(), "application/json");
     });
 

@@ -1,4 +1,5 @@
 #include <ctime>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <netinet/in.h>
@@ -51,9 +52,75 @@ using json = nlohmann::json;
         // 0 -> ok
         //-1 -> other errors
         //-2 -> timeout for broadcast
-        //-3 -> timeout for recv connect from other side
-        //-4 -> can't connect to server
-        int Sync::connect(){}
+        //-3 -> timeout for TCP
+        int Sync::connect(std::string uuid){
+            is_connecting_process = true;
+            try{
+                time_t start;
+                time(&start);
+                time_t timer;
+                while(true){
+                    time(&timer);
+                    if(timer - start > constants::TIMEOUT_TIME){
+                        return -2;
+                    } 
+                    broadcast.send(Message::ConnectRequest, broadcast.get_found_devices()[uuid].first);
+                    broadcast.read_received_data();
+                    auto [succes, other_uuid] = broadcast.recv(Message::ConnectResponse);
+                    if(succes && uuid == other_uuid){
+                        break;
+                    }
+                    usleep(constants::SLEEP_TIME);
+                }
+                int ret = create_tcp_connection(uuid);
+                if(ret == -1){
+                    return -3;
+                }
+            }
+            catch(std::exception &e){
+                std::cout << "Error: " << e.what();
+                return -1;
+            }
+            return 0;
+        }
+
+    // 0 -> ok
+    //-1 -> timeout
+    int Sync::create_tcp_connection(std::string uuid){
+        // server
+        if(broadcast.is_own_ip_bigger(broadcast.get_found_devices()[uuid].first)){
+            std::cout << "Server\n";
+            Server serv(constants::TCP_PORT);
+            time_t start;
+            time(&start);
+            time_t timer;
+            while(true){
+                time(&timer);
+                if((timer - start) > constants::TIMEOUT_TIME){
+                    return -1;
+                }
+                if(serv.is_ready_to_accept()){
+                    sock = serv.accept_conn();
+                    break;
+                }
+                usleep(constants::SLEEP_TIME);
+            }
+            std::cout << "Accept connection from client\n";
+        } else {
+            std::cout << "Client\n";
+            try{
+                sockaddr_in addr{};
+                addr.sin_addr = broadcast.get_found_devices()[uuid].first.sin_addr;
+                addr.sin_port = htons(constants::TCP_PORT);
+                addr.sin_family = AF_INET;
+                sock = client_connect(addr);
+            }
+            catch(std::runtime_error &e){
+                return -1;
+            }
+        }
+        return 0;
+    }
 
     void Sync::add_to_sync(fs::path path){
         if(std::find(detecting_paths.begin(), detecting_paths.end(), (std::string)path) == detecting_paths.end()){
@@ -106,7 +173,6 @@ using json = nlohmann::json;
             } 
             broadcast.send(Message::ConnectRequest, broadcast.get_found_devices()[uuid].first);
             broadcast.read_received_data();
-            // std::cout << "vse ok!\n";
             auto [succes, uuid] = broadcast.recv(Message::ConnectResponse);
             if(succes){
                 other_uuid = uuid;

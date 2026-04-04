@@ -37,7 +37,7 @@ TaskServer::TaskServer(SafeCmdQueue &queue) : cmd_q(&queue){}
 void TaskServer::start_server(int port){
 
     // GET /hello
-    svr.set_mount_point("/", "/home/oedada/Projects/apps/Wifisync/wifisync/src/gui/static");
+    svr.set_mount_point("/", "src/gui/static");
 
     svr.Post("/tasks", [this](const httplib::Request& req, httplib::Response& res){this->get_tasks(req, res);});
 

@@ -30,13 +30,14 @@ class Sync{
     json get_others_paths_difference();
     public:
         Sync();
+        int create_tcp_connection(std::string uuid);
         std::vector<std::string> read_paths_in_file(fs::path path, bool create);
         // 0 -> ok
         //-1 -> other errors
         //-2 -> timeout for broadcast
         //-3 -> timeout for recv connect from other side
         //-4 -> can't connect to server
-        int connect();
+        int connect(std::string uuid);
         bool connect_to_device(std::string uuid);
         void add_to_sync(fs::path path);
         void add_to_ignore(fs::path path);
