@@ -1,3 +1,5 @@
+#include <cstdint>
+#include <cstdio>
 #include <ctime>
 #include <exception>
 #include <filesystem>
@@ -20,15 +22,29 @@
 #include "headers/files_opers.hpp"
 #include "headers/difference.hpp"
 #include "headers/sync.hpp"
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 using json = nlohmann::json;
 
-        Sync::Sync(){
+        Sync::Sync() : broadcast(constants::BROADCAST_PORT){
             own_name = env::get_name();
             own_uuid = env::get_uuid();
             detecting_paths = read_paths_in_file(env::get_data_path(constants::DATA_DIR) / constants::DETECTING_UNITS_FILENAME, true);
             ignoring_paths = read_paths_in_file(env::get_data_path(constants::DATA_DIR) / constants::IGNORING_UNITS_FILENAME, true);
         }  
+
+        // void Sync::recv(ModifyType mt, fs::path dir_path){
+        //     switch(mt){
+        //         case(ModifyType::Removed):
+        //             char unit_type[1];
+        //             sock.receive(unit_type, 1);
+        //             if(unit_type[0] == 'd'){
+        //                 fs::remove_all(dir_path)
+        //             }
+        //     }
+        // }
 
         std::vector<std::string> Sync::read_paths_in_file(fs::path path, bool create){
             if(!fs::exists(path) && create){
@@ -89,6 +105,7 @@ using json = nlohmann::json;
     int Sync::create_tcp_connection(std::string uuid){
         // server
         if(broadcast.is_own_ip_bigger(broadcast.get_found_devices()[uuid].first)){
+            is_server = true;
             std::cout << "Server\n";
             Server serv(constants::TCP_PORT);
             time_t start;
@@ -107,6 +124,7 @@ using json = nlohmann::json;
             }
             std::cout << "Accept connection from client\n";
         } else {
+            is_server = false;
             std::cout << "Client\n";
             try{
                 sockaddr_in addr{};
@@ -256,14 +274,7 @@ using json = nlohmann::json;
         return other_paths_dif;
     }
 
-    // bool check_difs(json first_dif, json second_dif){
-    //     for(const auto &[key, val] : first_dif.items()){
-    //         if(second_dif.contains(key)){
-    //             std::cout << 
-    //             check_difs(first_dif[key],second_dif[key]);
-    //         }
-    //     }
-    // }
+    
 
     //-1 -> not connected
     int Sync::sync(){
@@ -272,21 +283,29 @@ using json = nlohmann::json;
         }
         change_snapshots();
         json other_dif = get_others_paths_difference();
-        write_json(env::get_data_path(constants::DATA_DIR) / "new_dif.json", other_dif);
+        
         return 0;
     }
 
-// int main(){
-//     UdpBroadcast br(constants::BROADCAST_PORT);
-//     while(true){
-//         br.send(Message::Broadcast, br.get_broadcast_addr());
-//         br.read_received_data();
-//         auto [succes, uuid] = br.recv(Message::ConnectRequest);
-//         if(succes){
-//             printf("%s\n", uuid.c_str());
-//             br.send(Message::ConnectResponse, br.get_found_devices()[uuid].first);
-//         }
-//         usleep(constants::SLEEP_TIME);
-//     }
-//     return 0;
-// }
+int main(int argc, char** argv){
+    bool server = false;
+    if(argc > 1){
+        if(argv[1][0] == 's'){
+            server = true;
+        }
+    }
+    if(server){
+        Server ftr(constants::TCP_PORT);
+        TCPSocket s = ftr.accept_conn();
+        std::cout << ftr.client_ip << ":" << ntohs(ftr.client_port) << std::endl;
+        s.send_file_with_name("data/to_send.txt");
+    } else{
+        sockaddr_in caddr;
+        caddr.sin_family = AF_INET;
+        caddr.sin_port = htons(constants::TCP_PORT);
+        inet_pton(AF_INET, constants::LOCAL_IP_ADDR, &caddr.sin_addr);
+        TCPSocket s = client_connect(caddr);
+        s.recv_file_with_name("data/test_recv");
+    }
+    return 0;
+}

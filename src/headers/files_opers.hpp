@@ -1,7 +1,34 @@
 #pragma once
 #include <filesystem>
 #include <nlohmann/json.hpp>
+#include <variant>
 #include <vector>
+
+enum class ModifyType{
+    Modified,
+    Added,
+    Deleted
+};
+
+enum class UnitType{
+    File,
+    Directory
+};
+
+struct DirData{
+    std::uint64_t subunits_number;
+};
+
+struct FileData{
+    std::ifstream& fin;
+};
+
+struct UnitChange{
+    ModifyType mt;
+    UnitType ut;
+    std::string name;
+    std::variant<DirData, FileData, std::monostate> data;
+};
 
 class Units{
     public:

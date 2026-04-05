@@ -8,11 +8,13 @@
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
+#include <variant>
 #include <vector>
 #include <fstream>
 #include <filesystem>
 #include "headers/utils.hpp"
 #include "headers/constants.hpp"
+#include "headers/files_opers.hpp"
 
 namespace fs = std::filesystem;
 
@@ -25,6 +27,17 @@ void TCPSocket::check_sock(){
 void TCPSocket::send(const std::vector<char> &buf, const size_t size){
     check_sock();
     ::send(sock, buf.data(), size, 0);
+}
+
+void TCPSocket::send(const std::string &buf){
+    std::vector<char> vect(buf.begin(), buf.end());
+    send(vect, vect.size());
+}
+
+void TCPSocket::send(const uint64_t &buf){
+    unsigned char buf_bytes[sizeof(uint64_t)];
+    toBytes(buf, buf_bytes);
+    ::send(sock, buf_bytes, sizeof(uint64_t), 0);
 }
 
 size_t TCPSocket::receive(void *data, size_t size){
@@ -44,26 +57,30 @@ size_t TCPSocket::receive(void *data, size_t size){
     return total;
 }
 
-void TCPSocket::smart_send_msg(const std::vector<char> &msg){
-    check_sock();
-    unsigned char size_bytes[8];
-    if ((uint64_t)msg.size() > constants::MAX_ALLOWED_SIZE){
-        throw std::runtime_error("Can't send message, it's too large");
-    }
-    toBytes((uint64_t)msg.size(), size_bytes);
-    ::send(sock, size_bytes, sizeof(uint64_t), 0);
-    ::send(sock, msg.data(), msg.size(), 0);
+uint64_t TCPSocket::recv_uint64(){
+    unsigned char bytes[sizeof(uint64_t)];
+    receive(bytes, sizeof(uint64_t));
+    auto number = fromBytes64(bytes);
+    return number;
 }
 
-std::vector<unsigned char> TCPSocket::smart_recv_msg(){
+void TCPSocket::smart_send_msg(const std::string &msg){
     check_sock();
-    unsigned char size_bytes[sizeof(uint64_t)];
-    receive(size_bytes, sizeof(uint64_t));
-    uint64_t data_size = fromBytes64(size_bytes);
+    if (static_cast<uint64_t>(msg.size()) > constants::MAX_ALLOWED_SIZE){
+        throw std::runtime_error("Can't send message, it's too large");
+    }
+    send((uint64_t)msg.size());
+    send(msg);
+}
+
+std::string TCPSocket::smart_recv_msg(){
+    check_sock();
+    uint64_t data_size = recv_uint64();
     if (data_size > constants::MAX_ALLOWED_SIZE || data_size < 0){
         throw std::runtime_error("Invalide message size");
     }
-    std::vector<unsigned char> buf(data_size);
+    std::string buf;
+    buf.resize(data_size);
     receive(buf.data(), buf.size());
     return buf;
 }
@@ -71,12 +88,10 @@ std::vector<unsigned char> TCPSocket::smart_recv_msg(){
 void TCPSocket::send_file(std::ifstream& fin, uint64_t file_size){
     check_sock();
     std::vector<char> buf(constants::BUFFER_SIZE);
-    unsigned char file_size_bytes[sizeof(uint64_t)];
-    toBytes(file_size, file_size_bytes);
-    ::send(sock, file_size_bytes, sizeof(uint64_t), 0);
+    send(file_size);
     if(fin){
         while(fin.read(buf.data(), buf.size() || fin.gcount() > 0)){
-            ::send(sock, buf.data(), fin.gcount(), 0);
+            send(buf, fin.gcount());
         }
     }
     else{
@@ -87,9 +102,7 @@ void TCPSocket::send_file(std::ifstream& fin, uint64_t file_size){
 void TCPSocket::recv_file(std::ofstream& fout){
     check_sock();
     std::vector<char> buf(constants::BUFFER_SIZE);
-    unsigned char file_size_bytes[sizeof(uint64_t)];
-    receive(file_size_bytes, sizeof(uint64_t));
-    uint64_t file_size = fromBytes64(file_size_bytes);
+    uint64_t file_size = recv_uint64();
     uint64_t remaining_bytes = file_size;
     int read_size;
     while(remaining_bytes > 0){
@@ -116,10 +129,8 @@ void TCPSocket::send_file_with_name(fs::path file_path){
     std::ifstream fin(file_path, std::ios::binary | std::ios::ate);
     uint64_t file_size = static_cast<uint64_t>(fin.tellg());
     fin.seekg(0, std::ios::beg);
-    unsigned char name_size_bytes[sizeof(uint64_t)];
-    toBytes(file_name.size(), name_size_bytes);
-    ::send(sock, name_size_bytes, sizeof(uint64_t), 0); 
-    ::send(sock, file_name.data(), file_name.size(), 0);
+    send(static_cast<uint64_t>(file_name.size()));
+    send(file_name);
     send_file(fin, file_size);
 }
 
@@ -130,15 +141,41 @@ std::filesystem::path TCPSocket::recv_file_with_name(std::filesystem::path dir_p
     if(!fs::exists(dir_path) || !fs::is_directory(dir_path)){
         throw std::runtime_error("Inavalid directory path for receive file with name");
     }
-    unsigned char name_size_bytes[sizeof(uint64_t)];
-    ::recv(sock, name_size_bytes, sizeof(uint64_t), 0);
-    uint64_t name_size = fromBytes64(name_size_bytes);
+    uint64_t name_size = recv_uint64();
     std::string file_name;
     file_name.resize(name_size);
-    ::recv(sock, file_name.data(), name_size, 0);
+    receive(file_name.data(), name_size);
     std::ofstream fout((dir_path / file_name), std::ios::binary);
     recv_file(fout);
     return (dir_path / file_name);
+}
+
+void TCPSocket::send_unit_change(UnitChange uc){
+    send(modify_to_string[uc.mt]);
+    send(unit_type_to_string[uc.ut]);
+    smart_send_msg(uc.name);
+    if(uc.mt != ModifyType::Deleted){
+        if(uc.ut == UnitType::File){
+            if (std::holds_alternative<FileData>(uc.data)) {
+                auto& in = std::get<FileData>(uc.data).fin;
+                in.seekg(0, std::ios::end);
+                auto fs = in.tellg();
+                in.seekg(0, std::ios::beg);
+                send_file(in, static_cast<uint64_t>(fs));
+            }
+            else{
+                throw std::runtime_error("Can't parse erro type");
+            }
+        }
+        else if(uc.ut == UnitType::Directory){
+            if(std::holds_alternative<DirData>(uc.data)){
+                send(std::get<DirData>(uc.data).subunits_number);
+            }
+            else{
+                throw std::runtime_error("Can't parse erro type");
+            }
+        }
+    }
 }
 
 TCPSocket::~TCPSocket(){

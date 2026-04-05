@@ -1,4 +1,5 @@
 #pragma once
+#include <map>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -7,6 +8,15 @@
 #include <unistd.h>
 #include <fstream>
 #include <filesystem>
+#include "files_opers.hpp"
+
+inline std::map<ModifyType, std::string> modify_to_string{
+    {ModifyType::Modified, "M"}, {ModifyType::Added, "A"}, {ModifyType::Deleted, "D"}
+};
+
+inline std::map<UnitType, std::string> unit_type_to_string{
+    {UnitType::File, "F"}, {UnitType::Directory, "D"}
+};
 
 class TCPSocket{
     public:
@@ -31,13 +41,17 @@ class TCPSocket{
 
         TCPSocket(const int s) : sock(s){}
         void send(const std::vector<char> &buf, const size_t size);
+        void send(const std::string &buf);
+        void send(const uint64_t &buf);
+        uint64_t recv_uint64();
         size_t receive(void *buf, size_t size);
-        void smart_send_msg(const std::vector<char> &msg);
-        std::vector<unsigned char> smart_recv_msg();
+        void smart_send_msg(const std::string &msg);
+        std::string smart_recv_msg();
         void send_file(std::ifstream& fin, uint64_t file_size);
         void recv_file(std::ofstream& fout);
         void send_file_with_name(std::filesystem::path file_path);
         std::filesystem::path recv_file_with_name(std::filesystem::path dir_path);
+        void send_unit_change(UnitChange uc);
         ~TCPSocket();
 
     private:

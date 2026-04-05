@@ -50,17 +50,17 @@ void test_client(){
     std::vector<char> buffer(8192);
 }
 
-void test_server(){
-    Server ftr(12345);
-    TCPSocket s = ftr.accept_conn();
-    std::cout << ftr.client_ip << ":" << ftr.client_port << std::endl;
-    ssize_t n = 1;
-    std::ofstream fout("data/out", std::ios::binary);
-    std::vector<unsigned char>buffer = s.smart_recv_msg();
-    while(true){
-        fout.write(reinterpret_cast<char*>(buffer.data()), n);
-    }
-}
+// void test_server(){
+//     Server ftr(12345);
+//     TCPSocket s = ftr.accept_conn();
+//     std::cout << ftr.client_ip << ":" << ftr.client_port << std::endl;
+//     ssize_t n = 1;
+//     std::ofstream fout("data/out", std::ios::binary);
+//     std::vector<unsigned char>buffer = s.smart_recv_msg();
+//     while(true){
+//         fout.write(reinterpret_cast<char*>(buffer.data()), n);
+//     }
+// }
 
 void test_x25519(){
     X25519 client;
@@ -103,53 +103,53 @@ void test_x_ed_25519(){
     std::cout << check_sig("data/keys/ed25519_pub.pem", msg.data(), msg.size(), test.sig, 64);
 }
 
-void test_x_ed_25519_file_trans(int argc, char** argv){
-    bool server = false;
-    if(argc > 1){
-        if(argv[1][0] == 's'){
-            server = true;
-        }
-    }
-    if(server){
-        X25519 server;
-        std::vector<char> pub_key_vector(
-            std::begin(server.pub_key),
-            std::end(server.pub_key)
-        );
-        std::cout << "Server pubkey: " << "\n";
-        for(int i = 0; i < 32; i++){
-            std::cout << server.pub_key[i];
-        }
-        std::cout << "\n";
-        Server ftr(12345);
-        TCPSocket s = ftr.accept_conn();
-        std::cout << ftr.client_ip << ":" << ftr.client_port << std::endl;
-        s.smart_send_msg(pub_key_vector);
-        std::ofstream fout("data/client_pub_key.pem", std::ios::binary);
-        std::vector<unsigned char> client_pub_key = s.smart_recv_msg();
-        fout.write(reinterpret_cast<char*>(client_pub_key.data()), client_pub_key.size());
-    } else{
-        X25519 client;
-        std::vector<char> pub_key_vector(
-            std::begin(client.pub_key),
-            std::end(client.pub_key)
-        );
-        std::cout << "Client pubkey: " << "\n";
-        for(int i = 0; i < 32; i++){
-            std::cout << pub_key_vector[i];
-        }
-        std::cout << "\n";
-        sockaddr_in caddr;
-        caddr.sin_family = AF_INET;
-        caddr.sin_port = 12345;
-        inet_pton(AF_INET, "ip", &caddr.sin_addr);
-        TCPSocket s = client_connect(caddr);
-        s.smart_send_msg(pub_key_vector);
-        std::ofstream fout("data/server_pub_key.pem", std::ios::binary);
-        std::vector<unsigned char> client_pub_key = s.smart_recv_msg();
-        fout.write(reinterpret_cast<char*>(client_pub_key.data()), client_pub_key.size());
-    }
-}
+// void test_x_ed_25519_file_trans(int argc, char** argv){
+//     bool server = false;
+//     if(argc > 1){
+//         if(argv[1][0] == 's'){
+//             server = true;
+//         }
+//     }
+//     if(server){
+//         X25519 server;
+//         std::vector<char> pub_key_vector(
+//             std::begin(server.pub_key),
+//             std::end(server.pub_key)
+//         );
+//         std::cout << "Server pubkey: " << "\n";
+//         for(int i = 0; i < 32; i++){
+//             std::cout << server.pub_key[i];
+//         }
+//         std::cout << "\n";
+//         Server ftr(12345);
+//         TCPSocket s = ftr.accept_conn();
+//         std::cout << ftr.client_ip << ":" << ftr.client_port << std::endl;
+//         s.smart_send_msg(pub_key_vector);
+//         std::ofstream fout("data/client_pub_key.pem", std::ios::binary);
+//         std::vector<unsigned char> client_pub_key = s.smart_recv_msg();
+//         fout.write(reinterpret_cast<char*>(client_pub_key.data()), client_pub_key.size());
+//     } else{
+//         X25519 client;
+//         std::vector<char> pub_key_vector(
+//             std::begin(client.pub_key),
+//             std::end(client.pub_key)
+//         );
+//         std::cout << "Client pubkey: " << "\n";
+//         for(int i = 0; i < 32; i++){
+//             std::cout << pub_key_vector[i];
+//         }
+//         std::cout << "\n";
+//         sockaddr_in caddr;
+//         caddr.sin_family = AF_INET;
+//         caddr.sin_port = 12345;
+//         inet_pton(AF_INET, "ip", &caddr.sin_addr);
+//         TCPSocket s = client_connect(caddr);
+//         s.smart_send_msg(pub_key_vector);
+//         std::ofstream fout("data/server_pub_key.pem", std::ios::binary);
+//         std::vector<unsigned char> client_pub_key = s.smart_recv_msg();
+//         fout.write(reinterpret_cast<char*>(client_pub_key.data()), client_pub_key.size());
+//     }
+// }
 
 
 

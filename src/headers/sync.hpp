@@ -28,6 +28,7 @@ class Sync{
     std::vector<std::string> ignoring_paths;
     void change_snapshots();
     json get_others_paths_difference();
+    // void recv(ModifyType mt, fs::path dir_path);
     public:
         Sync();
         int create_tcp_connection(std::string uuid);
@@ -44,7 +45,7 @@ class Sync{
         json find_devices();
         //-1 -> not connected
         int sync();
-        UdpBroadcast broadcast{constants::BROADCAST_PORT};
+        UdpBroadcast broadcast;
         bool is_connecting_process;
 
 };
