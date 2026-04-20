@@ -1,4 +1,11 @@
+# build
+.venv/
 build/
-app
-.vscode
-.venv
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+
+# clangd / vscode
+.vscode/
+.clangd
