@@ -9,9 +9,11 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <utility>
+#include "headers/TCPSocket.hpp"
 #include "headers/broadcast.hpp"
 #include "headers/constants.hpp"
 #include "headers/environment.hpp"
+#include "headers/server.hpp"
 
 UdpBroadcast::UdpBroadcast(int p) : broadcast_port(p){
     if(broadcast_sock < 0){
@@ -235,3 +237,120 @@ void print_ip(sockaddr_in addr){
     inet_ntop(AF_INET, &addr.sin_addr, ip, sizeof(ip));
     std::cout << " IP: " << ip << std::endl;
 }
+
+
+    SessionInitializer::SessionInitializer() : br(constants::BROADCAST_PORT){}
+
+    void SessionInitializer::broadcast(){
+        while(!stop_broadcast){
+            br.send(Message::Broadcast, br.get_broadcast_addr());
+            br.read_received_data();
+            br.recv(Message::Broadcast);
+            usleep(constants::SLEEP_TIME);
+            found_devices = br.get_found_devices();
+        }
+    }
+    
+    std::pair<bool, std::string> SessionInitializer::check_incoming_connections(){
+        br.read_received_data();
+        auto [succes, uuid] = br.recv(Message::ConnectRequest);
+        if(succes){
+            stop_broadcast = true;
+            return std::make_pair(succes, uuid);
+        }
+        return std::make_pair(succes, uuid);
+    }
+
+    std::tuple<bool, TCPSocket, bool> SessionInitializer::accept_connection(std::string uuid){
+        br.send(Message::ConnectResponse, br.get_found_devices()[uuid].first);
+        if(create_tcp_connection(uuid) == 0){
+            return {true, std::move(sock), is_server};
+        }
+        else{
+            return {false, std::move(sock), is_server};
+        }
+    }
+
+    std::tuple<bool, TCPSocket, bool> SessionInitializer::connect_to(std::string uuid){
+        if(connect(uuid) == 0){
+            return {true, std::move(sock), is_server};
+        }
+        else{
+            return {false, std::move(sock), is_server};
+        }
+    }
+
+    // 0 -> ok
+    //-1 -> other errors
+    //-2 -> timeout for broadcast
+    //-3 -> timeout for TCP
+    int SessionInitializer::connect(std::string uuid){
+        stop_broadcast = true;
+        try{
+            time_t start;
+            time(&start);
+            time_t timer;
+            while(true){
+                time(&timer);
+                if(timer - start > constants::TIMEOUT_TIME){
+                    return -2;
+                } 
+                br.send(Message::ConnectRequest, br.get_found_devices()[uuid].first);
+                br.read_received_data();
+                auto [succes, other_uuid] = br.recv(Message::ConnectResponse);
+                if(succes && (uuid == other_uuid)){
+                    break;
+                }
+                usleep(constants::SLEEP_TIME);
+            }
+            int ret = create_tcp_connection(uuid);
+            if(ret == -1){
+                return -3;
+            }
+        }
+        catch(std::exception &e){
+            std::cout << "Error: " << e.what();
+            return -1;
+        }
+        return 0;
+    }
+
+    // 0 -> ok
+    //-1 -> timeout
+    int SessionInitializer::create_tcp_connection(std::string uuid){
+        // server
+        if(br.is_own_ip_bigger(br.get_found_devices()[uuid].first)){
+            is_server = true;
+            std::cout << "Server\n";
+            Server serv(constants::TCP_PORT);
+            time_t start;
+            time(&start);
+            time_t timer;
+            while(true){
+                time(&timer);
+                if((timer - start) > constants::TIMEOUT_TIME){
+                    return -1;
+                }
+                if(serv.is_ready_to_accept()){
+                    sock = serv.accept_conn();
+                    break;
+                }
+                usleep(constants::SLEEP_TIME);
+            }
+            std::cout << "Accept connection from client\n";
+        } else {
+            is_server = false;
+            std::cout << "Client\n";
+            try{
+                sockaddr_in addr{};
+                addr.sin_addr = br.get_found_devices()[uuid].first.sin_addr;
+                addr.sin_port = htons(constants::TCP_PORT);
+                addr.sin_family = AF_INET;
+                sock = client_connect(addr);
+            }
+            catch(std::runtime_error &e){
+                return -1;
+            }
+        }
+        return 0;
+    }

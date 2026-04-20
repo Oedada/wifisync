@@ -18,6 +18,14 @@ inline std::map<UnitType, std::string> unit_type_to_string{
     {UnitType::File, "F"}, {UnitType::Directory, "D"}
 };
 
+inline std::map<std::string, ModifyType> string_to_modify{
+    {"M", ModifyType::Modified}, {"A", ModifyType::Added}, {"D", ModifyType::Deleted}
+};
+
+inline std::map<std::string, UnitType> string_to_unit_type{
+    {"F", UnitType::File}, {"D", UnitType::Directory}
+};
+
 class TCPSocket{
     public:
         TCPSocket() noexcept : sock(-1){}
@@ -51,7 +59,6 @@ class TCPSocket{
         void recv_file(std::ofstream& fout);
         void send_file_with_name(std::filesystem::path file_path);
         std::filesystem::path recv_file_with_name(std::filesystem::path dir_path);
-        void send_unit_change(UnitChange uc);
         ~TCPSocket();
 
     private:

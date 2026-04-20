@@ -1,5 +1,6 @@
 #pragma once
 #include "constants.hpp"
+#include "TCPSocket.hpp"
 #include <net/if.h>
 #include <string>
 #include <ifaddrs.h>
@@ -57,3 +58,20 @@ class UdpBroadcast{
             int broadcast_sock = socket(AF_INET, SOCK_DGRAM, 0);
 };
 void print_ip(sockaddr_in addr);
+
+class SessionInitializer{
+    private:
+        UdpBroadcast br;
+        bool stop_broadcast = false;
+        bool is_server;
+        TCPSocket sock;
+        int connect(std::string uuid);
+        int create_tcp_connection(std::string uuid);
+    public:
+        std::map<std::string, std::pair<sockaddr_in, std::string>> found_devices;
+        SessionInitializer();
+        void broadcast();
+        std::pair<bool, std::string> check_incoming_connections();
+        std::tuple<bool, TCPSocket, bool> accept_connection(std::string uuid);
+        std::tuple<bool, TCPSocket, bool> connect_to(std::string uuid);
+};

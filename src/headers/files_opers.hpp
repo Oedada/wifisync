@@ -20,7 +20,7 @@ struct DirData{
 };
 
 struct FileData{
-    std::ifstream& fin;
+    std::filesystem::path file_path;
 };
 
 struct UnitChange{

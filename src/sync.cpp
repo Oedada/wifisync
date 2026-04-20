@@ -1,5 +1,4 @@
 #include <cstdint>
-#include <cstdio>
 #include <ctime>
 #include <exception>
 #include <filesystem>
@@ -23,30 +22,22 @@
 #include "headers/difference.hpp"
 #include "headers/sync.hpp"
 #include <filesystem>
+#include <variant>
 
 namespace fs = std::filesystem;
+bool dry_run = true;
+
 
 using json = nlohmann::json;
 
         Sync::Sync() : broadcast(constants::BROADCAST_PORT){
             own_name = env::get_name();
             own_uuid = env::get_uuid();
-            detecting_paths = read_paths_in_file(env::get_data_path(constants::DATA_DIR) / constants::DETECTING_UNITS_FILENAME, true);
-            ignoring_paths = read_paths_in_file(env::get_data_path(constants::DATA_DIR) / constants::IGNORING_UNITS_FILENAME, true);
-        }  
+            detecting_paths = read_paths_from_file(env::get_data_path(constants::DATA_DIR) / constants::DETECTING_UNITS_FILENAME, true);
+            ignoring_paths = read_paths_from_file(env::get_data_path(constants::DATA_DIR) / constants::IGNORING_UNITS_FILENAME, true);
+        }
 
-        // void Sync::recv(ModifyType mt, fs::path dir_path){
-        //     switch(mt){
-        //         case(ModifyType::Removed):
-        //             char unit_type[1];
-        //             sock.receive(unit_type, 1);
-        //             if(unit_type[0] == 'd'){
-        //                 fs::remove_all(dir_path)
-        //             }
-        //     }
-        // }
-
-        std::vector<std::string> Sync::read_paths_in_file(fs::path path, bool create){
+        std::vector<std::string> Sync::read_paths_from_file(fs::path path, bool create){
             if(!fs::exists(path) && create){
                 std::ofstream fout(path);
                 fout.close();
@@ -243,6 +234,7 @@ using json = nlohmann::json;
         }
     }
 
+
     json Sync::get_others_paths_difference(){
         fs::path data = env::get_data_path(constants::DATA_DIR);
         Units last(data / constants::LAST_SNAPSHOT_FILENAME, false);
@@ -278,34 +270,79 @@ using json = nlohmann::json;
 
     //-1 -> not connected
     int Sync::sync(){
-        if(!is_connected){
-            return -1;
-        }
+        // if(!is_connected){
+        //     return -1;
+        // }
         change_snapshots();
-        json other_dif = get_others_paths_difference();
-        
+        other_uuid = "534b4b56-d809-482b-865a-48cf82121882";
+        other_dif = get_others_paths_difference();
+        write_json("data/dif.json", other_dif);
+        std::cout << other_dif["/home/oedada/Project/test"]["wifisync"]["app"] << "\n";
         return 0;
     }
 
-int main(int argc, char** argv){
-    bool server = false;
-    if(argc > 1){
-        if(argv[1][0] == 's'){
-            server = true;
+    void Sync::send_unit_change(UnitChange uc){
+        sock.send(modify_to_string[uc.mt]);
+        sock.send(unit_type_to_string[uc.ut]);
+        sock.smart_send_msg(uc.name);
+        if(uc.mt != ModifyType::Deleted){
+            if(uc.ut == UnitType::File){
+                if (std::holds_alternative<FileData>(uc.data)) {
+                    auto fp = std::get<FileData>(uc.data).file_path;
+                    std::ifstream fin(fp, std::ios::binary);
+                    fin.seekg(0, std::ios::end);
+                    auto fs = fin.tellg();
+                    fin.seekg(0, std::ios::beg);
+                    sock.send_file(fin, static_cast<uint64_t>(fs));
+                }
+                else{
+                    throw std::runtime_error("Can't parse erro type");
+                }
+            }
+            else if(uc.ut == UnitType::Directory){
+                if(std::holds_alternative<DirData>(uc.data)){
+                    sock.send(std::get<DirData>(uc.data).subunits_number);
+                }
+                else{
+                    throw std::runtime_error("Can't parse erro type");
+                }
+            }
         }
     }
-    if(server){
-        Server ftr(constants::TCP_PORT);
-        TCPSocket s = ftr.accept_conn();
-        std::cout << ftr.client_ip << ":" << ntohs(ftr.client_port) << std::endl;
-        s.send_file_with_name("data/to_send.txt");
-    } else{
-        sockaddr_in caddr;
-        caddr.sin_family = AF_INET;
-        caddr.sin_port = htons(constants::TCP_PORT);
-        inet_pton(AF_INET, constants::LOCAL_IP_ADDR, &caddr.sin_addr);
-        TCPSocket s = client_connect(caddr);
-        s.recv_file_with_name("data/test_recv");
+
+    UnitChange Sync::json_to_UC(json j, fs::path p){
+        if(!j.is_string()){
+            throw std::runtime_error("Not a string json");
+        }
+        UnitChange uc;
+        if(fs::is_directory(p)){
+            uc.ut = UnitType::Directory;
+            size_t count = 0;
+            for (const auto& entry : std::filesystem::directory_iterator(p)) {
+                count++;
+            }
+            uc.data = DirData{count};
+        }
+        else if(fs::is_regular_file(p)){
+            uc.ut = UnitType::File;
+            uc.data = FileData{p};
+        }
+        auto val = j.get<std::string>();
+        if(val == "A"){
+            uc.mt = ModifyType::Added;
+        }
+        else if(val == "D"){
+            uc.mt = ModifyType::Deleted;
+        }
+        else if(val == "M"){
+            uc.mt = ModifyType::Modified;
+        }
+        uc.name = p.filename();
+        return uc;
     }
-    return 0;
-}
+
+// int main(){
+//     Sync ss;
+//     ss.sync();
+//     return 0;
+// }

@@ -8,13 +8,11 @@
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
-#include <variant>
 #include <vector>
 #include <fstream>
 #include <filesystem>
 #include "headers/utils.hpp"
 #include "headers/constants.hpp"
-#include "headers/files_opers.hpp"
 
 namespace fs = std::filesystem;
 
@@ -148,34 +146,6 @@ std::filesystem::path TCPSocket::recv_file_with_name(std::filesystem::path dir_p
     std::ofstream fout((dir_path / file_name), std::ios::binary);
     recv_file(fout);
     return (dir_path / file_name);
-}
-
-void TCPSocket::send_unit_change(UnitChange uc){
-    send(modify_to_string[uc.mt]);
-    send(unit_type_to_string[uc.ut]);
-    smart_send_msg(uc.name);
-    if(uc.mt != ModifyType::Deleted){
-        if(uc.ut == UnitType::File){
-            if (std::holds_alternative<FileData>(uc.data)) {
-                auto& in = std::get<FileData>(uc.data).fin;
-                in.seekg(0, std::ios::end);
-                auto fs = in.tellg();
-                in.seekg(0, std::ios::beg);
-                send_file(in, static_cast<uint64_t>(fs));
-            }
-            else{
-                throw std::runtime_error("Can't parse erro type");
-            }
-        }
-        else if(uc.ut == UnitType::Directory){
-            if(std::holds_alternative<DirData>(uc.data)){
-                send(std::get<DirData>(uc.data).subunits_number);
-            }
-            else{
-                throw std::runtime_error("Can't parse erro type");
-            }
-        }
-    }
 }
 
 TCPSocket::~TCPSocket(){

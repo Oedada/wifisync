@@ -41,16 +41,6 @@ void TaskServer::start_server(int port){
 
     svr.Post("/tasks", [this](const httplib::Request& req, httplib::Response& res){this->get_tasks(req, res);});
 
-    svr.Get("/api", [](const httplib::Request&, httplib::Response& res) {
-        nlohmann::json j = {
-            {"name", "Oedada"},
-            {"age", 18},
-            {"city", "Frankfurt"}
-        };
-
-        res.set_content(j.dump(), "application/json");
-    });
-
     printf("Server running on http://%s:%i\n",constants::LOCAL_IP_ADDR, port);
     svr.listen(constants::LOCAL_IP_ADDR, port); // блокирующий вызов
 }
