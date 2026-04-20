@@ -1,5 +1,0 @@
-messages-enabled: true
-set: '&a[Hat] Item set as hat.'
-stack-size: '&c[Hat] Your hat must have a stack size of 1.'
-no-permission: '&c[Hat] You do not have permission to wear this hat'
-console: '&c[Hat] You cannot execute this command from the console.'
