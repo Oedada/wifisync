@@ -6,10 +6,10 @@
 #include <vector>
 #include <filesystem>
 #include <fstream>
-#include "headers/files_opers.hpp"
-#include "headers/utils.hpp"
-#include "headers/difference.hpp"
-#include "headers/constants.hpp"
+#include "files_opers.hpp"
+#include "utils.hpp"
+#include "difference.hpp"
+#include "constants.hpp"
 
 using json = nlohmann::json;
 

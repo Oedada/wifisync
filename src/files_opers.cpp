@@ -5,10 +5,10 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
-#include "headers/hash.hpp"
-#include "headers/files_opers.hpp"
-#include "headers/constants.hpp"
-#include "headers/utils.hpp"
+#include "hash.hpp"
+#include "files_opers.hpp"
+#include "constants.hpp"
+#include "utils.hpp"
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;

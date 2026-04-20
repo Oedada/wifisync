@@ -9,11 +9,11 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <utility>
-#include "headers/TCPSocket.hpp"
-#include "headers/broadcast.hpp"
-#include "headers/constants.hpp"
-#include "headers/environment.hpp"
-#include "headers/server.hpp"
+#include "TCPSocket.hpp"
+#include "broadcast.hpp"
+#include "constants.hpp"
+#include "environment.hpp"
+#include "server.hpp"
 
 UdpBroadcast::UdpBroadcast(int p) : broadcast_port(p){
     if(broadcast_sock < 0){

@@ -1,4 +1,4 @@
-#include "headers/TCPSocket.hpp"
+#include "TCPSocket.hpp"
 #include <cstdint>
 #include <cstring>
 #include <iostream>
@@ -11,8 +11,8 @@
 #include <vector>
 #include <fstream>
 #include <filesystem>
-#include "headers/utils.hpp"
-#include "headers/constants.hpp"
+#include "utils.hpp"
+#include "constants.hpp"
 
 namespace fs = std::filesystem;
 
@@ -146,6 +146,19 @@ std::filesystem::path TCPSocket::recv_file_with_name(std::filesystem::path dir_p
     std::ofstream fout((dir_path / file_name), std::ios::binary);
     recv_file(fout);
     return (dir_path / file_name);
+}
+
+std::string TCPSocket::ip(){
+    sockaddr_in addr;
+    socklen_t len = sizeof(addr);
+
+    if (getpeername(sock, (sockaddr*)&addr, &len) == 0) {
+        std::cout << inet_ntoa(addr.sin_addr) << std::endl;
+    }
+    std::string ip;
+    ip.resize(INET_ADDRSTRLEN);
+    inet_ntop(AF_INET, &addr.sin_addr, ip.data(), ip.size());
+    return ip;
 }
 
 TCPSocket::~TCPSocket(){

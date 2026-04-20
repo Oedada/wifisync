@@ -11,16 +11,16 @@
 
 #include <nlohmann/json.hpp>
 
-#include "headers/init.hpp"
-#include "headers/constants.hpp"
-#include "headers/broadcast.hpp"
-#include "headers/environment.hpp"
-#include "headers/server.hpp"
-#include "headers/TCPSocket.hpp"
-#include "headers/utils.hpp"
-#include "headers/files_opers.hpp"
-#include "headers/difference.hpp"
-#include "headers/sync.hpp"
+#include "init.hpp"
+#include "constants.hpp"
+#include "broadcast.hpp"
+#include "environment.hpp"
+#include "server.hpp"
+#include "TCPSocket.hpp"
+#include "utils.hpp"
+#include "files_opers.hpp"
+#include "difference.hpp"
+#include "sync.hpp"
 #include <filesystem>
 #include <variant>
 

@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <vector>
 #include <string>
-#include "headers/hash.hpp"
+#include "hash.hpp"
 
 Hash::Hash() : is_finalized(false) {
     if((mdctx = EVP_MD_CTX_new()) == NULL){

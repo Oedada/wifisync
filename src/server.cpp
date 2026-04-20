@@ -4,7 +4,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdexcept>
-#include "headers/server.hpp"
+#include "server.hpp"
 
 
         Server::Server(const int port) : server_port(port){

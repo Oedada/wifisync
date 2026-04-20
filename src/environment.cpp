@@ -1,11 +1,11 @@
-#include "headers/constants.hpp"
 #include <SDL2/SDL.h>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include "headers/environment.hpp"
+#include "constants.hpp"
+#include "environment.hpp"
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;

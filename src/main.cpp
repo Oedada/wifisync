@@ -5,16 +5,16 @@
 #include <openssl/rand.h>
 #include <sys/socket.h>
 #include <vector>
-#include "headers/init.hpp"
-#include "headers/constants.hpp"
-#include "headers/hash.hpp"
-#include "headers/files_opers.hpp"
-#include "headers/server.hpp"
-#include "headers/x25519.hpp"
-#include "headers/ed25519.hpp"
-#include "headers/TCPSocket.hpp"
-#include "headers/difference.hpp"
-#include "headers/broadcast.hpp"
+#include "init.hpp"
+#include "constants.hpp"
+#include "hash.hpp"
+#include "files_opers.hpp"
+#include "server.hpp"
+#include "x25519.hpp"
+#include "ed25519.hpp"
+#include "TCPSocket.hpp"
+#include "difference.hpp"
+#include "broadcast.hpp"
 
 using json = nlohmann::json;
 

@@ -4,9 +4,9 @@
 #include <stdexcept>
 #include <string>
 #include <cstring>
-#include "headers/hash.hpp"
-#include "headers/x25519.hpp"
-#include "headers/utils.hpp"
+#include "hash.hpp"
+#include "x25519.hpp"
+#include "utils.hpp"
 
 X25519::X25519(){
     gen_pair_keys();

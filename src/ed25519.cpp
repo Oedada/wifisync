@@ -3,8 +3,8 @@
 #include <openssl/pem.h>
 #include <stdexcept>
 #include <filesystem>
-#include "headers/ed25519.hpp"
-#include "headers/utils.hpp"
+#include "ed25519.hpp"
+#include "utils.hpp"
 
 namespace fs = std::filesystem;
 

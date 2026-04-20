@@ -2,18 +2,17 @@
 #include <iostream>
 #include <map>
 #include <openssl/rand.h>
-#include "headers/server.hpp"
-#include "headers/x25519.hpp"
-#include "headers/ed25519.hpp"
+#include "x25519.hpp"
+#include "ed25519.hpp"
 #include <stdexcept>
 #include <unistd.h>
 #include <variant>
 #include <mutex>
 #include <queue>
-#include "external_libs/cpp-httplib/httplib.h"
+#include "httplib.h"
 #include <nlohmann/json.hpp>
-#include "headers/request_server.hpp"
-#include "headers/constants.hpp"
+#include "request_server.hpp"
+#include "constants.hpp"
 
 using json = nlohmann::json;
 using Arg = std::variant<bool, int, std::string>;
@@ -37,7 +36,7 @@ TaskServer::TaskServer(SafeCmdQueue &queue) : cmd_q(&queue){}
 void TaskServer::start_server(int port){
 
     // GET /hello
-    svr.set_mount_point("/", "src/gui/static");
+    svr.set_mount_point("/", "gui/static");
 
     svr.Post("/tasks", [this](const httplib::Request& req, httplib::Response& res){this->get_tasks(req, res);});
 

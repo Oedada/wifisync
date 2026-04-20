@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>JSON Table</title>
+</head>
+<body>
+
+<table border="1" id="table">
+    <tr>
+        <th>Name</th>
+        <th>UUID</th>
+    </tr>
+</table>
+
+<select id="uuid-select"></select>
+<button id="connect-btn">Подключиться</button>
+<h2 id="status"></h2>
+
+<script>
+    const sel = document.getElementById('uuid-select');
+    const btn = document.getElementById('connect-btn');
+    const status = document.getElementById('status');
+
+    btn.addEventListener('click', async () => {
+        const uuid = sel.value;
+        if (!uuid) return;
+
+        status.textContent = 'Подключаемся...';
+
+        try {
+            const res = await fetch('/connect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uuid })
+            });
+            const data = await res.json();
+            if(data.ok){
+                status.textContent = `Успешное подключение`;
+            }
+            else{
+                status.textContent = `Неудачное подключение`;
+            }
+        } catch (err) {
+            console.error(err);
+            status.textContent = 'Ошибка подключения';
+        }
+    });
+    fetch('/devices')
+        .then(response => response.json())
+        .then(data => {
+            const table = document.getElementById('table');
+            const sel = document.getElementById('uuid-select');
+            for (const key in data) {
+                const option = document.createElement('option');
+                option.value = data[key];
+                option.textContent = key;
+                sel.appendChild(option);
+
+                const row = document.createElement('tr');
+
+                const keyCell = document.createElement('td');
+                keyCell.textContent = key;
+
+                const valueCell = document.createElement('td');
+                valueCell.textContent = data[key];
+
+                row.appendChild(keyCell);
+                row.appendChild(valueCell);
+                table.appendChild(row);
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+        });
+
+        function showPrompt(uuid) {
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = 0;
+            overlay.style.left = 0;
+            overlay.style.right = 0;
+            overlay.style.bottom = 0;
+            overlay.style.background = 'rgba(0,0,0,0.5)';
+            overlay.style.display = 'flex';
+            overlay.style.justifyContent = 'center';
+            overlay.style.alignItems = 'center';
+
+            const box = document.createElement('div');
+            box.style.background = 'white';
+            box.style.padding = '20px';
+
+            const title = document.createElement('p');
+            title.textContent = "Пользователь с uuid " + uuid + "хочет подключиться к вам";
+
+            const yes = document.createElement('button');
+            yes.textContent = "Принять";
+
+            const no = document.createElement('button');
+            no.textContent = "Отклонить";
+
+            yes.onclick = async () => {
+                await fetch('/accept_connect', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ answer: true, uuid: uuid })
+                });
+                document.body.removeChild(overlay);
+            };
+
+            no.onclick = async () => {
+                await fetch('/accept_connect', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ answer: false })
+                });
+                document.body.removeChild(overlay);
+            };
+
+            box.appendChild(title);
+            box.appendChild(yes);
+            box.appendChild(no);
+            overlay.appendChild(box);
+
+            document.body.appendChild(overlay);
+        }
+
+        async function checkState() {
+            try {
+                const res = await fetch('/incoming_connect');
+                const data = await res.json();
+
+                if (data.status === true && !promptShown) {
+                    promptShown = true;
+                    showPrompt(data.uuid || "Вопрос?");
+                }
+            } catch (e) {
+                console.error("check failed", e);
+            }
+        }
+        let promptShown = false;
+        // проверяем каждые 500 мс
+        setInterval(checkState, 500);
+</script>
+
+</body>
+</html>

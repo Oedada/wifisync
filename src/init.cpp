@@ -1,8 +1,8 @@
 #include <iostream>
-#include "headers/init.hpp"
-#include "external_libs/stduuid/include/uuid.h"
-#include "headers/constants.hpp"
-#include "headers/environment.hpp"
+#include "init.hpp"
+#include "uuid.h"
+#include "constants.hpp"
+#include "environment.hpp"
 #include <fstream>
 #include <random>
 
