@@ -32,7 +32,19 @@ add_compile_options(
 
 file(GLOB SRCS src/*.cpp)
 
-add_executable(app ${SRCS})
+add_executable(app 
+  src/broadcasts.cpp
+  src/difference.cpp
+  src/environment.cpp
+  src/files_opers.cpp
+  src/hash.cpp
+  src/init.cpp
+  src/request_server.cpp
+  src/server.cpp
+  src/TCPSocket.cpp
+  src/threads.cpp
+  src/utils.cpp
+)
 
 target_include_directories(app PRIVATE
     include
