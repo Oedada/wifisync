@@ -39,11 +39,13 @@ add_executable(app
   src/files_opers.cpp
   src/hash.cpp
   src/init.cpp
-  src/request_server.cpp
+  src/http_server.cpp
   src/server.cpp
   src/TCPSocket.cpp
   src/threads.cpp
   src/utils.cpp
+  src/dif_work.cpp
+  src/transport.cpp
 )
 
 target_include_directories(app PRIVATE

@@ -12,7 +12,7 @@ using json = nlohmann::json;
 class Difference{
     public: 
         Difference(std::filesystem::path file_name, json last_tree, json current_tree);
-        void calculate_difference();
+        void calculate_and_write_difference();
     private:
         json ltree;
         json ctree;

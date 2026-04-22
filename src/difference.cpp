@@ -23,7 +23,7 @@ Difference::Difference(std::filesystem::path file_name, json last_tree, json cur
     std::ifstream fin(file_name, std::ios::in);
     fin >> dif;
 }
-void Difference::calculate_difference(){
+void Difference::calculate_and_write_difference(){
     if(ltree.size() != ctree.size()){
         throw std::runtime_error("Initial json tree should be the same size");
     }
@@ -88,34 +88,34 @@ std::vector<std::string> Difference::shared_elements(std::vector<std::string> m1
 
 std::vector<std::string> Difference::shared_elements(json m1, json m2){    
     return shared_elements(get_keys(m1), get_keys(m2));
-    }
+}
 
     void Difference::calc_dif(json lj, json cj, json &res, std::string res_name){
-    if(lj.is_array() || lj.is_string()){
-        return;
-    }
-    if(lj.at(constants::JSON_FIELD_NAME_TYPE) == constants::UNIT_TYPE_FILE){
-        res[res_name] = constants::MODIFIED_UNIT;
-    }
-    else{
-        std::vector<std::string> deleted_files = exluding_dif(lj, cj);
-        std::vector<std::string> added_files = exluding_dif(cj, lj);
-        for(std::string &name : deleted_files){
-            res[res_name][name] = constants::DELETED_UNIT;
+        if(lj.is_array() || lj.is_string()){
+            return;
         }
-        for(std::string &name : added_files){
-            res[res_name][name] = constants::ADDED_UNIT;
+        if(lj.at(constants::JSON_FIELD_NAME_TYPE) == constants::UNIT_TYPE_FILE){
+            res[res_name] = constants::MODIFIED_UNIT;
         }
-        std::vector<std::string> shared_files = shared_elements(lj, cj);
-        // Модификация файлов
-        for(auto &key : shared_files){
-            if(lj.at(key).is_array() || lj.at(key).is_string()){
-                continue;
+        else{
+            std::vector<std::string> deleted_files = exluding_dif(lj, cj);
+            std::vector<std::string> added_files = exluding_dif(cj, lj);
+            for(std::string &name : deleted_files){
+                res[res_name][name] = constants::DELETED_UNIT;
             }
-            if(!equal_unit(lj.at(key), cj.at(key))){
-                res[res_name][key] = json::object();
-                calc_dif(lj.at(key), cj.at(key), res[res_name], key);
+            for(std::string &name : added_files){
+                res[res_name][name] = constants::ADDED_UNIT;
+            }
+            std::vector<std::string> shared_files = shared_elements(lj, cj);
+            // Модификация файлов
+            for(auto &key : shared_files){
+                if(lj.at(key).is_array() || lj.at(key).is_string()){
+                    continue;
+                }
+                if(!equal_unit(lj.at(key), cj.at(key))){
+                    res[res_name][key] = json::object();
+                    calc_dif(lj.at(key), cj.at(key), res[res_name], key);
+                }
             }
         }
-    }
 }

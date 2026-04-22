@@ -130,7 +130,7 @@
                 const res = await fetch('/incoming_connect');
                 const data = await res.json();
 
-                if (data.status === true && !promptShown) {
+                if (data.ok === true && !promptShown) {
                     promptShown = true;
                     showPrompt(data.uuid || "Вопрос?");
                 }

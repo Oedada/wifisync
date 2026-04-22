@@ -1,5 +1,4 @@
 #pragma once
-#include <map>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -8,23 +7,6 @@
 #include <unistd.h>
 #include <fstream>
 #include <filesystem>
-#include "files_opers.hpp"
-
-inline std::map<ModifyType, std::string> modify_to_string{
-    {ModifyType::Modified, "M"}, {ModifyType::Added, "A"}, {ModifyType::Deleted, "D"}
-};
-
-inline std::map<UnitType, std::string> unit_type_to_string{
-    {UnitType::File, "F"}, {UnitType::Directory, "D"}
-};
-
-inline std::map<std::string, ModifyType> string_to_modify{
-    {"M", ModifyType::Modified}, {"A", ModifyType::Added}, {"D", ModifyType::Deleted}
-};
-
-inline std::map<std::string, UnitType> string_to_unit_type{
-    {"F", UnitType::File}, {"D", UnitType::Directory}
-};
 
 class TCPSocket{
     public:
