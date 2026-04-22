@@ -6,14 +6,12 @@
 #include <vector>
 #include <filesystem>
 #include <fstream>
-#include "files_opers.hpp"
-#include "utils.hpp"
 #include "difference.hpp"
 #include "constants.hpp"
 
 using json = nlohmann::json;
 
-Difference::Difference(std::filesystem::path file_name, json last_tree, json current_tree) : fname(file_name), ltree(last_tree), ctree(current_tree){
+Difference::Difference(std::filesystem::path file_name, json last_tree, json current_tree) :  ltree(last_tree), ctree(current_tree), fname(file_name){
     if(!std::filesystem::exists(file_name.parent_path())){
         throw std::runtime_error("Json dif parent dir doesn't exists");
     }
@@ -91,20 +89,24 @@ std::vector<std::string> Difference::shared_elements(json m1, json m2){
 }
 
     void Difference::calc_dif(json lj, json cj, json &res, std::string res_name){
+        res[res_name][constants::JSON_FIELD_NAME_TYPE] = lj.at(constants::JSON_FIELD_NAME_TYPE);
         if(lj.is_array() || lj.is_string()){
             return;
         }
         if(lj.at(constants::JSON_FIELD_NAME_TYPE) == constants::UNIT_TYPE_FILE){
-            res[res_name] = constants::MODIFIED_UNIT;
+            res[res_name][constants::JSON_FIELD_NAME_MOD_TYPE] = constants::MODIFIED_UNIT;
         }
         else{
+            res[res_name][constants::JSON_FIELD_NAME_MOD_TYPE] = constants::MODIFIED_UNIT;
             std::vector<std::string> deleted_files = exluding_dif(lj, cj);
             std::vector<std::string> added_files = exluding_dif(cj, lj);
             for(std::string &name : deleted_files){
-                res[res_name][name] = constants::DELETED_UNIT;
+                res[res_name][name][constants::JSON_FIELD_NAME_MOD_TYPE] = constants::DELETED_UNIT;
+                res[res_name][name][constants::JSON_FIELD_NAME_TYPE] = lj.at(name).at(constants::JSON_FIELD_NAME_TYPE);
             }
             for(std::string &name : added_files){
-                res[res_name][name] = constants::ADDED_UNIT;
+                res[res_name][name][constants::JSON_FIELD_NAME_MOD_TYPE] = constants::ADDED_UNIT;
+                res[res_name][name][constants::JSON_FIELD_NAME_TYPE] = cj.at(name).at(constants::JSON_FIELD_NAME_TYPE);
             }
             std::vector<std::string> shared_files = shared_elements(lj, cj);
             // Модификация файлов

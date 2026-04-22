@@ -108,6 +108,9 @@ namespace fs = std::filesystem;
         json difference = read_json(data_dir / constants::DIFFERENCE_FILENAME, false);
         json devices_path_table = read_json(env::get_data_path() / constants::DEVICES_FILE, false);
         for(const auto &[key, val] : difference.items()){
+            if(key == constants::JSON_FIELD_NAME_TYPE){
+                continue;
+            }
             if(!devices_path_table[other_uuid]["paths"].contains(key)){
                 std::cerr << "There is no corresponding path to the path " << key;
                 difference[key]["/other_path"] = "/None";

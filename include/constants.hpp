@@ -17,6 +17,8 @@ namespace constants{
     inline const std::string ADDED_UNIT = "A";
     inline const std::string JSON_FIELD_NAME_TYPE = "/type";
     inline const std::string JSON_FIELD_NAME_HASH = "/hash";
+    inline const std::string JSON_FIELD_NAME_MOD_TYPE = "/mtype";
+    inline const std::string JSON_FIELD_NAME_OTHER_PATH = "/other_path";
     inline const std::string UNIT_TYPE_DIR = "dir";
     inline const std::string UNIT_TYPE_EMPTY_DIR = "empty_dir";
     inline const std::string UNIT_TYPE_FILE = "file";

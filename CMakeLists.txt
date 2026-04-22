@@ -46,6 +46,7 @@ add_executable(app
   src/utils.cpp
   src/dif_work.cpp
   src/transport.cpp
+  src/dif_walker.cpp
 )
 
 target_include_directories(app PRIVATE

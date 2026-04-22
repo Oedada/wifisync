@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <nlohmann/json.hpp>
 
+uint64_t count_subelements(nlohmann::json node);
 void catch_error(int return_code, std::string error_message);
 void toBytes(uint64_t x, unsigned char* out_b);
 uint64_t fromBytes64(unsigned char* in_b);

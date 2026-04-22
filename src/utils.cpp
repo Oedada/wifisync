@@ -1,3 +1,4 @@
+#include "constants.hpp"
 #include <cstdint>
 #include <fstream>
 #include <stdexcept>
@@ -7,7 +8,15 @@
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
-
+uint64_t count_subelements(json node){
+    uint64_t count = 0;
+    for(const auto & [key, val]: node.items()){
+        if(key != constants::JSON_FIELD_NAME_TYPE && key != constants::JSON_FIELD_NAME_MOD_TYPE && key != constants::JSON_FIELD_NAME_OTHER_PATH){
+            count++;
+        }
+    }
+    return count;
+}
 
 void catch_error(int return_code,std::string error_message){
     if(return_code != 1){

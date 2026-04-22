@@ -51,7 +51,7 @@ struct SUnit{
 struct RUnit{
     ModifyType mt;
     UnitType ut;
-    std::string name;
+    std::string path;
     std::variant<DirData, std::function<void(fs::path)>, std::monostate> data;
 };
 
@@ -62,4 +62,9 @@ class Transport{
         Transport(TCPSocket s);
         void send(SUnit u);
         void set(RUnit &u);
+        void walk_received(auto&& emit);
+        void walk_unit(auto&& emit, fs::path parent_path);
 };
+
+std::ostream& operator<<(std::ostream& stream, RUnit u);
+std::ostream& operator<<(std::ostream& stream, SUnit u);

@@ -1,15 +1,16 @@
 #include "transport.hpp"
 #include "TCPSocket.hpp"
-#include "server.hpp"
+#include <cstdint>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <iostream>
 
 Transport::Transport(TCPSocket s) : sock(std::move(s)){}
 
 std::ostream& operator<<(std::ostream& stream, RUnit u){
     stream << "Modify Type: " << modify_to_string[u.mt] << "\n";
     stream << "Unit Type: " << unit_type_to_string[u.ut] << "\n";
-    stream << "Unit Name: " << u.name << "\n";
+    stream << "Unit Path: " << u.path << "\n";
     if(u.mt != ModifyType::Deleted){
         if(u.ut == UnitType::Directory){
             stream << "Count sub-units: " << std::get<DirData>(u.data).subunits_number << "\n";
@@ -17,6 +18,19 @@ std::ostream& operator<<(std::ostream& stream, RUnit u){
         else{
             stream << "Function for call to recv" << "\n";
         }
+    }
+    return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, SUnit u){
+    stream << "Modify Type: " << modify_to_string[u.mt] << "\n";
+    stream << "Unit Type: " << unit_type_to_string[u.ut] << "\n";
+    stream << "Unit Name: " << u.name << "\n";
+    if(u.ut == UnitType::Directory){
+        stream << "Count sub-units: " << std::get<DirData>(u.data).subunits_number << "\n";
+    }
+    else{
+        stream << "File path: " << std::get<FileData>(u.data).file_path << "\n";
     }
     return stream;
 }
@@ -41,7 +55,7 @@ void Transport::set(RUnit &u){
     u.mt = string_to_modify[temp];
     sock.receive(temp, 1);
     u.ut = string_to_unit_type[temp];
-    u.name = sock.smart_recv_msg();
+    u.path = sock.smart_recv_msg();
     if(u.mt != ModifyType::Deleted){
         if(u.ut == UnitType::File){
             u.data = [&](fs::path p) {sock.recv_file_with_name(p);};
@@ -52,14 +66,26 @@ void Transport::set(RUnit &u){
     }
 }
 
-int main(){
-    Server s(12345);
-    TCPSocket sock = s.accept_conn();
-    Transport t(std::move(sock));
-    SUnit u{};
-    u.mt = ModifyType::Added;
-    u.ut = UnitType::Directory;
-    u.name = "src";
-    u.data = DirData{17};
-    t.send(u);
+void Transport::walk_received(auto&& emit){
+    uint64_t count_roots = sock.recv_uint64();
+    for(uint64_t i = 0; i < count_roots; i++){
+        walk_unit(emit, "");
+    }
+}
+
+void Transport::walk_unit(auto&& emit, fs::path parent_path){
+    RUnit runit;
+    set(runit);
+    std::string name = runit.path;
+    if(parent_path == ""){
+        runit.path = name;
+    } else {
+        runit.path = parent_path / name;
+    }
+    emit(runit);
+    if(runit.ut == UnitType::Directory){
+        for(uint64_t j = 0; j < std::get<DirData>(runit.data).subunits_number; j++){
+            walk_unit(emit, parent_path / name);
+        }
+    }
 }
