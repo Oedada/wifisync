@@ -1,5 +1,10 @@
 #include "transport.hpp"
 #include "TCPSocket.hpp"
+#include "server.hpp"
+#include <cstdio>
+#include <functional>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 Transport::Transport(TCPSocket s) : sock(std::move(s)){}
 
@@ -33,6 +38,13 @@ void Transport::set(RUnit &u){
 }
 
 int main(){
-    TCPSocket
-    Transport t();
+    Server s(12345);
+    TCPSocket sock = s.accept_conn();
+    Transport t(std::move(sock));
+    SUnit u{};
+    u.mt = ModifyType::Modified;
+    u.ut = UnitType::File;
+    u.name = "broadcasts.cpp";
+    u.data = FileData{fs::path("/home/oedada/Projects/apps/Wifisync/wifisync/src/broadcasts.cpp")};
+    t.send(u);
 }

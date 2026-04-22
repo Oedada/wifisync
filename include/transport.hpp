@@ -56,8 +56,10 @@ struct RUnit{
 };
 
 class Transport{
-    TCPSocket sock;
-    Transport(TCPSocket s);
-    void send(SUnit u);
-    void set(RUnit &u);
+    private:
+        TCPSocket sock;
+    public:
+        Transport(TCPSocket s);
+        void send(SUnit u);
+        void set(RUnit &u);
 };
