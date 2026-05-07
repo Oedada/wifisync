@@ -58,12 +58,12 @@ struct RUnit{
 class Transport{
     private:
         TCPSocket sock;
+        void walk_unit(void (*emit)(RUnit&), fs::path parent_path);
     public:
         Transport(TCPSocket s);
         void send(SUnit u);
         void set(RUnit &u);
-        void walk_received(auto&& emit);
-        void walk_unit(auto&& emit, fs::path parent_path);
+        void walk_received(void (*emit)(RUnit&));
 };
 
 std::ostream& operator<<(std::ostream& stream, RUnit u);

@@ -92,7 +92,9 @@ namespace fs = std::filesystem;
             cur_snapshot.set_unit(path, true);
         }
         for(const auto &path : ignoring_paths){
-            cur_snapshot.rm_unit(path);
+            if(fs::is_regular_file(path)){
+                cur_snapshot.rm_unit(path);
+            }
         }
         if(!fs::exists(last_shapshot_path)){
             fs::copy_file(cur_snapshot_path, last_shapshot_path, fs::copy_options::overwrite_existing);

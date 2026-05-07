@@ -95,7 +95,7 @@ namespace fs = std::filesystem;
                 }
             }
         }
-        throw std::runtime_error("Path is uncorrect this");
+        throw std::runtime_error(std::string("Path is uncorrect this") + std::string(p));
     }
 
     json* Units::get_unit_from_path(const fs::path &p){

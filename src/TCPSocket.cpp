@@ -121,7 +121,7 @@ void TCPSocket::send_file_with_name(fs::path file_path){
     check_sock();
     file_path = fs::weakly_canonical(file_path);
     if(!fs::exists(file_path) || !fs::is_regular_file(file_path)){
-        throw std::runtime_error("Invalid file path for send with name");
+        throw std::runtime_error(std::string("Invalid file path for send with name: ") + std::string(file_path));
     }
     std::string file_name = file_path.filename();
     std::ifstream fin(file_path, std::ios::binary | std::ios::ate);

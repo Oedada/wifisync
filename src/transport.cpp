@@ -52,9 +52,9 @@ void Transport::send(SUnit u){
 void Transport::set(RUnit &u){
     char temp[1];
     sock.receive(temp, 1);
-    u.mt = string_to_modify[temp];
+    u.mt = string_to_modify[std::string(1, temp[0])];
     sock.receive(temp, 1);
-    u.ut = string_to_unit_type[temp];
+    u.ut = string_to_unit_type[std::string(1, temp[0])];
     u.path = sock.smart_recv_msg();
     if(u.mt != ModifyType::Deleted){
         if(u.ut == UnitType::File){
@@ -66,14 +66,14 @@ void Transport::set(RUnit &u){
     }
 }
 
-void Transport::walk_received(auto&& emit){
+void Transport::walk_received(void (*emit)(RUnit&)){
     uint64_t count_roots = sock.recv_uint64();
     for(uint64_t i = 0; i < count_roots; i++){
         walk_unit(emit, "");
     }
 }
 
-void Transport::walk_unit(auto&& emit, fs::path parent_path){
+void Transport::walk_unit(void (*emit)(RUnit&), fs::path parent_path){
     RUnit runit;
     set(runit);
     std::string name = runit.path;

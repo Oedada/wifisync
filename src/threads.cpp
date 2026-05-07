@@ -44,51 +44,51 @@ std::tuple<bool, TCPSocket, bool> handle_connection(GetConnectionType gct, std::
 }
 
 
-// int main() {
-//     std::thread broadcast_thread([&](){return si.broadcast();});
+int main() {
+    std::thread broadcast_thread([&](){return si.broadcast();});
 
-//     HTTPServer hs;
+    HTTPServer hs;
 
-//     hs.add_handler(RequestType::get, "/devices", [&](const httplib::Request&, httplib::Response& res) {
-//         json ret;
-//         for(auto [key, p] : si.found_devices){
-//             ret[p.second] = key;
-//         }
-//         res.set_content(ret.dump(), "application/json");
-//     });
+    hs.add_handler(RequestType::get, "/devices", [&](const httplib::Request&, httplib::Response& res) {
+        json ret;
+        for(auto [key, p] : si.found_devices){
+            ret[p.second] = key;
+        }
+        res.set_content(ret.dump(), "application/json");
+    });
 
-//     hs.add_handler(RequestType::get, "/incoming_connect", [&](const httplib::Request&, httplib::Response& res) {
-//         json ret;
-//         auto [status, uuid] = si.check_incoming_connections();
-//         if(!status){
-//             json_error(res, "There isn't any incoming connection", {});
-//         }
-//         else{
-//             ret["uuid"] = uuid;
-//             json_ok(res, ret);
-//         }
-//     });
+    hs.add_handler(RequestType::get, "/incoming_connect", [&](const httplib::Request&, httplib::Response& res) {
+        json ret;
+        auto [status, uuid] = si.check_incoming_connections();
+        if(!status){
+            json_error(res, "There isn't any incoming connection", {});
+        }
+        else{
+            ret["uuid"] = uuid;
+            json_ok(res, ret);
+        }
+    });
 
 
-//     hs.add_handler(RequestType::post, "/accept_connect", [&](const httplib::Request& req, httplib::Response& res) {
-//         json j = json::parse(req.body);
-//         json ret;
-//         bool answer = j.at("answer").get<bool>();
-//         std::string uuid = j.at("uuid").get<std::string>();
-//         if(answer){
-//             auto [succes, sock, is_server] = handle_connection(GetConnectionType::Accept, uuid, ret, res);
-//         }
-//     });
+    hs.add_handler(RequestType::post, "/accept_connect", [&](const httplib::Request& req, httplib::Response& res) {
+        json j = json::parse(req.body);
+        json ret;
+        bool answer = j.at("answer").get<bool>();
+        std::string uuid = j.at("uuid").get<std::string>();
+        if(answer){
+            auto [succes, sock, is_server] = handle_connection(GetConnectionType::Accept, uuid, ret, res);
+        }
+    });
 
-//     hs.add_handler(RequestType::post, "/connect", [&](const httplib::Request& req, httplib::Response& res) {
-//         json j = json::parse(req.body);
-//         json ret;
-//         std::string uuid = j.at("uuid").get<std::string>();
-//         auto [succes, sock, is_server] = handle_connection(GetConnectionType::Connect, uuid, ret, res);
-//     });
+    hs.add_handler(RequestType::post, "/connect", [&](const httplib::Request& req, httplib::Response& res) {
+        json j = json::parse(req.body);
+        json ret;
+        std::string uuid = j.at("uuid").get<std::string>();
+        auto [succes, sock, is_server] = handle_connection(GetConnectionType::Connect, uuid, ret, res);
+    });
 
-//     std::thread api_thread([&hs](){return hs.start_server(5000);});
+    std::thread api_thread([&hs](){return hs.start_server(5000);});
     
-//     api_thread.join();
-//     broadcast_thread.join();
-// }
+    api_thread.join();
+    broadcast_thread.join();
+}

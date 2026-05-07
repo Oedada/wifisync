@@ -89,7 +89,12 @@ std::vector<std::string> Difference::shared_elements(json m1, json m2){
 }
 
     void Difference::calc_dif(json lj, json cj, json &res, std::string res_name){
-        res[res_name][constants::JSON_FIELD_NAME_TYPE] = lj.at(constants::JSON_FIELD_NAME_TYPE);
+        if(lj.at(constants::JSON_FIELD_NAME_TYPE) == constants::UNIT_TYPE_EMPTY_DIR){
+            res[res_name][constants::JSON_FIELD_NAME_TYPE] = constants::UNIT_TYPE_DIR;
+        }
+        else{
+            res[res_name][constants::JSON_FIELD_NAME_TYPE] = lj.at(constants::JSON_FIELD_NAME_TYPE);
+        }
         if(lj.is_array() || lj.is_string()){
             return;
         }
