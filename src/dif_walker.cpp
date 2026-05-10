@@ -5,15 +5,15 @@
 #include "environment.hpp"
 #include "dif_work.hpp"
 #include "server.hpp"
+#include "transport.hpp"
 #include "utils.hpp"
+#include "change_applier.hpp"
 #include <arpa/inet.h>
 #include <filesystem>
 #include <netinet/in.h>
 #include <stdexcept>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <thread>
-#include <chrono>
 #include <variant>
 
 // хранилище
@@ -50,15 +50,18 @@ void DifWalker::walk(auto&& emit){
 }
 
 void walk_added_directory_in_fs(fs::path cur_path, auto&& emit){
+    std::cout << cur_path << "\n";
     for(const auto &p : fs::directory_iterator(cur_path)){
         SUnit sunit{};
         sunit.name = p.path().filename();
         if(p.is_directory()){
+            std::cout << "koko" << "\n";
             sunit.ut = UnitType::Directory;
             uint64_t count_sp = 0;
-            for(auto const& sp : fs::directory_iterator(p)){
+            for([[maybe_unused]]auto const& sp : fs::directory_iterator(p)){
                 count_sp++;
             }
+            std::cout << count_sp << "\n";
             sunit.data = DirData{count_sp};
         }
         else if(p.is_regular_file()){
@@ -71,9 +74,7 @@ void walk_added_directory_in_fs(fs::path cur_path, auto&& emit){
         sunit.mt = ModifyType::Added;
         emit(sunit);
         if(sunit.ut == UnitType::Directory){
-            for(auto const& sp : fs::directory_iterator(p)){
-                walk_added_directory_in_fs(cur_path / sp.path().filename(), emit);
-            }
+            walk_added_directory_in_fs(cur_path / p.path().filename(), emit);
         }
     }
 }
@@ -121,6 +122,9 @@ SUnit DifWalker::json_to_sunit(const json &node, const fs::path &cur_path, const
     }
     if(u.ut == UnitType::Directory){
         u.data = DirData{count_subelements(node)};
+        if(u.mt == ModifyType::Added){
+            u.data = DirData{(uint64_t)std::distance(fs::directory_iterator(cur_path), fs::directory_iterator{})};
+        }
     }
     else{
         u.data = FileData{cur_path};
@@ -138,6 +142,7 @@ void print_sunit(SUnit u){
 void print_runit(RUnit &u){
     std::cout << u;
     std::cout << "---------------\n";
+    ChangeApplier::apply_runit(u);
 }
 
 void send_u(SUnit u){
@@ -147,31 +152,34 @@ void send_u(SUnit u){
 }
 
 
-// int main(){
-//     bool is_server;
-//     std::cin >> is_server;
-//     if(is_server){
-//         DifWork difwork("534b4b56-d809-482b-865a-48cf82121882");
-//         // difwork.shift_snapshots();
-//         difwork.calculate_dif();
-//         json dif = read_json(env::get_data_path(constants::DATA_DIR) / constants::DIFFERENCE_FILENAME, false);
-//         DifWalker dw(dif);
-//         Server s(12345);
-//         std::cout << "Done\n";
-//         TCPSocket sock = s.accept_conn();
-//         sock.send(1);
-//         auto tr = std::make_unique<Transport>(std::move(sock));
-//         init_transport(std::move(tr));
-//         dw.walk(send_u);
-//         std::this_thread::sleep_for(std::chrono::seconds(2));
-//     }
-//     else{
-//         sockaddr_in addr{};
-//         addr.sin_family = AF_INET;
-//         addr.sin_port = htons(12345);
-//         inet_pton(AF_INET, "0.0.0.0", &addr.sin_addr);
-//         TCPSocket sock = client_connect(addr);
-//         Transport tr(std::move(sock));
-//         tr.walk_received(print_runit);
-//     }
-// }
+int main(int argc, char** argv){
+    bool server = false;
+    if(argc > 1){
+        if(argv[1][0] == 's'){
+            server = true;
+        }
+    }
+    if(server){
+        DifWork difwork("534b4b56-d809-482b-865a-48cf82121882");
+        difwork.shift_snapshots();
+        difwork.calculate_dif();
+        json dif = read_json(env::get_data_path(constants::DATA_DIR) / constants::DIFFERENCE_FILENAME, false);
+        DifWalker dw(dif);
+        Server s(12345);
+        std::cout << "Done\n";
+        TCPSocket sock = s.accept_conn();
+        sock.send(1);
+        auto tr = std::make_unique<Transport>(std::move(sock));
+        init_transport(std::move(tr));
+        dw.walk(send_u);
+    }
+    else{
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(12345);
+        inet_pton(AF_INET, "0.0.0.0", &addr.sin_addr);
+        TCPSocket sock = client_connect(addr);
+        Transport tr(std::move(sock));
+        tr.walk_received(print_runit);
+    }
+}

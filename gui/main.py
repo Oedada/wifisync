@@ -3,6 +3,8 @@ import json
 import subprocess
 from pathlib import Path
 
+import requests
+from PyQt6.QtCore import QThread, pyqtSignal, QTimer
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QApplication,
@@ -22,6 +24,7 @@ from PyQt6.QtWidgets import (
     QInputDialog,
     QTreeWidget,
     QTreeWidgetItem,
+    QListWidgetItem,
 )
 
 # =========================
@@ -350,15 +353,19 @@ class SettingsTab(QWidget):
         self.manager.save_ignores(ignores)
 
 
-from PyQt6.QtCore import QThread, pyqtSignal
-
-
 class HttpRequests(QThread):
-    finished = pyqtSignal(str)
+    finished = pyqtSignal(requests.Response)
 
-    def request(self, path: str):
-        result = "hello"
-        self.finished.emit(result)
+    def __init__(self):
+        super().__init__()
+        self.path = ""
+
+    def run(self):
+        try:
+            result = requests.get("http://127.0.0.1:5000" + self.path)
+            self.finished.emit(result)
+        except:
+            print("Не получилось, не фортануло")
 
 
 # =========================
@@ -428,10 +435,47 @@ class MainTab(QWidget):
         layout.addWidget(title)
         layout.addWidget(splitter)
 
+        self.http_req = HttpRequests()
+        self.http_req.finished.connect(self.update_devices)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.req_devices)
+        self.timer.start(3000)
+        self.found_devices = {}
+
+    def req_devices(self):
+        if not self.http_req.isRunning():
+            self.http_req.path = "/devices"
+            self.http_req.start()
+
+    def get_devices_form_list(self) -> dict:
+        devices = {}
+        for i in range(self.devices_list.count()):
+            item = self.devices_list.item(i)
+            devices[item.text()] = item.data(Qt.ItemDataRole.UserRole)
+        return devices
+
+    def update_devices(self, devices):
+        for name, uuid in devices.json().items():
+            self.found_devices[uuid] = name
+
+        print(self.get_devices_form_list())
+        for uuid, name in self.found_devices.items():
+            if name not in self.get_devices_form_list().keys():
+                item = QListWidgetItem(name)
+                item.setData(Qt.ItemDataRole.UserRole, uuid)
+                self.devices_list.addItem(item)
+
+            
 
     def sync(self):
         item = self.devices_list.currentItem()
-
+        self.timer.stop()
+        response = requests.post(
+            "http://127.0.0.1:5000/connect",
+            json={
+                "uuid": self.devices_list.currentItem().data(Qt.ItemDataRole.UserRole)
+            }
+        )
         if not item:
             QMessageBox.warning(
                 self,
@@ -443,6 +487,7 @@ class MainTab(QWidget):
         self.logs.append(
             f"[SYNC] Синхронизация с {item.text()}"
         )
+        self.logs.append(response.text)
 
         # Заглушка
         self.conflicts.append(

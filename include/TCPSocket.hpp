@@ -38,7 +38,9 @@ class TCPSocket{
         void smart_send_msg(const std::string &msg);
         std::string smart_recv_msg();
         void send_file(std::ifstream& fin, uint64_t file_size);
+        void send_file(std::filesystem::path file_path);
         void recv_file(std::ofstream& fout);
+        void recv_file(std::filesystem::path file_path);
         void send_file_with_name(std::filesystem::path file_path);
         std::filesystem::path recv_file_with_name(std::filesystem::path dir_path);
         ~TCPSocket();

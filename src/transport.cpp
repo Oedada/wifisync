@@ -41,7 +41,7 @@ void Transport::send(SUnit u){
     sock.smart_send_msg(u.name);
     if(u.mt != ModifyType::Deleted){
         if(u.ut == UnitType::File){
-            sock.send_file_with_name(std::get<FileData>(u.data).file_path);
+            sock.send_file(std::get<FileData>(u.data).file_path);
         }
         else{
             sock.send(std::get<DirData>(u.data).subunits_number);
@@ -58,7 +58,7 @@ void Transport::set(RUnit &u){
     u.path = sock.smart_recv_msg();
     if(u.mt != ModifyType::Deleted){
         if(u.ut == UnitType::File){
-            u.data = [&](fs::path p) {sock.recv_file_with_name(p);};
+            u.data = [&](fs::path p) {sock.recv_file(p);};
         }
         else{
             u.data = DirData{sock.recv_uint64()};

@@ -67,7 +67,7 @@ void TCPSocket::smart_send_msg(const std::string &msg){
     if (static_cast<uint64_t>(msg.size()) > constants::MAX_ALLOWED_SIZE){
         throw std::runtime_error("Can't send message, it's too large");
     }
-    send((uint64_t)msg.size());
+    send(msg.size());
     send(msg);
 }
 
@@ -88,13 +88,26 @@ void TCPSocket::send_file(std::ifstream& fin, uint64_t file_size){
     std::vector<char> buf(constants::BUFFER_SIZE);
     send(file_size);
     if(fin){
-        while(fin.read(buf.data(), buf.size() || fin.gcount() > 0)){
+        while(fin.read(buf.data(), buf.size()) || fin.gcount() > 0){
             send(buf, fin.gcount());
         }
     }
     else{
         throw std::runtime_error("Input stream doesn't correct");
     }
+}
+
+void TCPSocket::send_file(fs::path file_path){
+    if(!fs::exists(file_path)){
+        throw std::runtime_error("File not exist");
+    }
+    if(!fs::is_regular_file(file_path)){
+        throw std::runtime_error("This isn't file");
+    }
+    std::ifstream fin(file_path, std::ios::binary | std::ios::ate);
+    uint64_t file_size = static_cast<uint64_t>(fin.tellg());
+    fin.seekg(0, std::ios::beg);
+    send_file(fin, file_size);
 }
 
 void TCPSocket::recv_file(std::ofstream& fout){
@@ -115,6 +128,14 @@ void TCPSocket::recv_file(std::ofstream& fout){
         receive(buf.data(), read_size);
         fout.write(buf.data(), read_size);
     }
+}
+
+void TCPSocket::recv_file(fs::path file_path){
+    if(!fs::exists(file_path.parent_path())){
+        throw std::runtime_error("Parent dir doesn't exists");
+    }
+    std::ofstream fout(file_path, std::ios::binary);
+    recv_file(fout);
 }
 
 void TCPSocket::send_file_with_name(fs::path file_path){
@@ -162,8 +183,10 @@ std::string TCPSocket::ip(){
 }
 
 TCPSocket::~TCPSocket(){
-    if (sock >= 0)
+    if (sock >= 0){
+        std::cout << "Socket closed\n";
         ::close(sock);
+    }
 }
 
 TCPSocket client_connect(sockaddr_in addr){

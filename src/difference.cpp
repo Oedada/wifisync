@@ -22,11 +22,19 @@ Difference::Difference(std::filesystem::path file_name, json last_tree, json cur
     fin >> dif;
 }
 void Difference::calculate_and_write_difference(){
-    if(ltree.size() != ctree.size()){
-        throw std::runtime_error("Initial json tree should be the same size");
-    }
+    // if(ltree.size() != ctree.size()){
+    //     throw std::runtime_error("Initial json tree should be the same size");
+    // }
     for(auto &[dir_name, dir] : ctree.items()){
-        calc_dif(ltree[dir_name], ctree[dir_name], dif, dir_name);
+        if(ltree.contains(dir_name)){
+            calc_dif(ltree.at(dir_name), ctree.at(dir_name), dif, dir_name);
+        }
+        else{
+            json empty_json;
+            empty_json[constants::JSON_FIELD_NAME_TYPE] = constants::UNIT_TYPE_EMPTY_DIR;
+            empty_json[constants::JSON_FIELD_NAME_HASH] = json::array();
+            calc_dif(empty_json, ctree.at(dir_name), dif, dir_name);
+        }
     }
     std::ofstream fout(fname, std::ios::out);
     std::string jstring = dif.dump();

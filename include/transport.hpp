@@ -1,7 +1,9 @@
+#pragma once
 #include "TCPSocket.hpp"
 #include <functional>
 #include <map>
 #include <variant>
+
 
 namespace fs = std::filesystem;
 

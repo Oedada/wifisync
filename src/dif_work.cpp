@@ -105,10 +105,18 @@ namespace fs = std::filesystem;
         fs::path data_dir = env::get_data_path(constants::DATA_DIR);
         Units last_snapshot(data_dir / constants::LAST_SNAPSHOT_FILENAME, false);
         Units cur_snapshot(data_dir / constants::CURRENT_SNAPSHOT_FILENAME, false);
-        Difference dif(data_dir / constants::DIFFERENCE_FILENAME, last_snapshot.json_tree, cur_snapshot.json_tree);
-        dif.calculate_and_write_difference();
-        json difference = read_json(data_dir / constants::DIFFERENCE_FILENAME, false);
         json devices_path_table = read_json(env::get_data_path() / constants::DEVICES_FILE, false);
+        if(devices_path_table[other_uuid]["first_connect"]){
+            Difference dif(data_dir / constants::DIFFERENCE_FILENAME, {}, cur_snapshot.json_tree);
+            dif.calculate_and_write_difference();
+            devices_path_table[other_uuid]["first_connect"] = false;
+            write_json(env::get_data_path() / constants::DEVICES_FILE, devices_path_table);
+        }
+        else{
+            Difference dif(data_dir / constants::DIFFERENCE_FILENAME, last_snapshot.json_tree, cur_snapshot.json_tree);
+            dif.calculate_and_write_difference();
+        }
+        json difference = read_json(data_dir / constants::DIFFERENCE_FILENAME, false);
         for(const auto &[key, val] : difference.items()){
             if(key == constants::JSON_FIELD_NAME_TYPE){
                 continue;

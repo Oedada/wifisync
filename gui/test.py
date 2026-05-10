@@ -1,4 +1,9 @@
 import requests
 
-res = requests.get("http://127.0.0.1:5000" + "/devices")
-print(res.text)
+response = requests.post(
+            "http://127.0.0.1:5000/connect",
+            json={
+                "uuid": "fkdsjf"
+            }
+        )
+print(response.status_code)
