@@ -321,7 +321,7 @@ void print_ip(sockaddr_in addr){
         // server
         if(br.is_own_ip_bigger(br.get_found_devices()[uuid].first)){
             is_server = true;
-            std::cout << "Server\n";
+            std::cout << "Role: Server\n";
             Server serv(constants::TCP_PORT);
             time_t start;
             time(&start);
@@ -340,7 +340,7 @@ void print_ip(sockaddr_in addr){
             std::cout << "Accept connection from client\n";
         } else {
             is_server = false;
-            std::cout << "Client\n";
+            std::cout << "Role: Client\n";
             try{
                 sockaddr_in addr{};
                 addr.sin_addr = br.get_found_devices()[uuid].first.sin_addr;

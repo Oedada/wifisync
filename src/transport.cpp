@@ -68,6 +68,7 @@ void Transport::set(RUnit &u){
 
 void Transport::walk_received(void (*emit)(RUnit&)){
     uint64_t count_roots = sock.recv_uint64();
+    std::cout << count_roots << "\n";
     for(uint64_t i = 0; i < count_roots; i++){
         walk_unit(emit, "");
     }

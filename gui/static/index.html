@@ -53,17 +53,17 @@
             const sel = document.getElementById('uuid-select');
             for (const key in data) {
                 const option = document.createElement('option');
-                option.value = data[key];
-                option.textContent = key;
+                option.value = key;
+                option.textContent = data[key];
                 sel.appendChild(option);
 
                 const row = document.createElement('tr');
 
                 const keyCell = document.createElement('td');
-                keyCell.textContent = key;
+                keyCell.textContent = data[key];
 
                 const valueCell = document.createElement('td');
-                valueCell.textContent = data[key];
+                valueCell.textContent = key;
 
                 row.appendChild(keyCell);
                 row.appendChild(valueCell);

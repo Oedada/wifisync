@@ -1,4 +1,5 @@
 #include "TCPSocket.hpp"
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <iostream>
@@ -44,9 +45,11 @@ size_t TCPSocket::receive(void *data, size_t size){
     char* ptr = static_cast<char*>(data);
     while(total < size){
         ssize_t n = ::recv(sock, ptr + total, size-total, 0);
-        if(n < 0){
-            throw std::runtime_error("Failed receiving data");
-        } else if(n == 0){
+        while(n < 0){
+            std::cerr << "Failed receiving data\n";
+            std::this_thread::sleep_for(std::chrono::microseconds(constants::SLEEP_TIME));
+        }
+        if(n == 0){
             throw std::runtime_error("Socket has closed by other side");
         } else{
             total += n;

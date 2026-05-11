@@ -29,7 +29,7 @@ bool ChangeApplier::safeRemove(const fs::path& path) {
 }
 
 
-void ChangeApplier::apply_runit(RUnit runit){
+void ChangeApplier::apply_runit(RUnit &runit){
     if(runit.mt == ModifyType::Deleted){
         // std::cout << "Delete: " << runit.path << "\n";
         safeRemove(runit.path);
