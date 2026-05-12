@@ -65,6 +65,7 @@ class SessionInitializer{
         bool stop_broadcast = false;
         bool is_server;
         TCPSocket sock;
+        bool accepting_connection;
         int connect(std::string uuid);
         int create_tcp_connection(std::string uuid);
     public:

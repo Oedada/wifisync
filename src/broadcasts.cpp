@@ -159,6 +159,7 @@ std::pair<std::string, std::string> UdpBroadcast::parse_msg(const char *buf, con
 
 std::pair<bool, std::string> UdpBroadcast::add_to_found_devices_if_not_own_uuid(char* buf, size_t size){
     auto [uuid, name] = parse_msg(buf, size);
+    std::cout << uuid << std::endl;
     if(uuid != env::get_uuid()){
         if(!found_devices.contains(uuid)){
             found_devices[uuid] = std::make_pair(tmp_recv_addr, name);   
@@ -252,21 +253,28 @@ void print_ip(sockaddr_in addr){
     }
     
     std::pair<bool, std::string> SessionInitializer::check_incoming_connections(){
-        br.read_received_data();
-        auto [succes, uuid] = br.recv(Message::ConnectRequest);
-        if(succes){
-            stop_broadcast = true;
+        if(!accepting_connection){
+            br.read_received_data();
+            auto [succes, uuid] = br.recv(Message::ConnectRequest);
+            if(succes){
+                stop_broadcast = true;
+                return std::make_pair(succes, uuid);
+            }
             return std::make_pair(succes, uuid);
         }
-        return std::make_pair(succes, uuid);
+        else{
+            return std::make_pair(false, "uuid");
+        }
     }
 
     std::tuple<bool, TCPSocket, bool> SessionInitializer::accept_connection(std::string uuid){
+        accepting_connection = true;
         br.send(Message::ConnectResponse, br.get_found_devices()[uuid].first);
         if(create_tcp_connection(uuid) == 0){
             return {true, std::move(sock), is_server};
         }
         else{
+            accepting_connection = false;
             return {false, std::move(sock), is_server};
         }
     }

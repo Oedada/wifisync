@@ -72,11 +72,12 @@ void full_sync(TCPSocket sock, bool is_server, std::string uuid){
 
 
 int main() {
+    setvbuf(stdout, NULL, _IONBF, 0);
     init();
     std::thread broadcast_thread([&](){return si.broadcast();});
     std::thread sync_thread;
     HTTPServer hs;
-
+    
     hs.add_handler(RequestType::get, "/devices", [&](const httplib::Request&, httplib::Response& res) {
         json ret;
         for(auto [key, p] : si.found_devices){
@@ -85,7 +86,7 @@ int main() {
         ret["fake_device"] = "neuuid";
         res.set_content(ret.dump(), "application/json");
     });
-
+    
     hs.add_handler(RequestType::get, "/incoming_connect", [&](const httplib::Request&, httplib::Response& res) {
         json ret;
         auto [status, uuid] = si.check_incoming_connections();
@@ -93,12 +94,13 @@ int main() {
             json_error(res, "There isn't any incoming connection", {});
         }
         else{
+            std::cout << "There's incoming connection!" << std::endl;
             ret["uuid"] = uuid;
             json_ok(res, ret);
         }
     });
-
-
+    
+    
     hs.add_handler(RequestType::post, "/accept_connect", [&](const httplib::Request& req, httplib::Response& res) {
         json j = json::parse(req.body);
         std::string uuid = j.at("uuid").get<std::string>();
@@ -107,7 +109,8 @@ int main() {
         if(answer){
             auto [success, sock, is_server] = handle_connection(GetConnectionType::Accept, uuid, ret, res);
             if(success){
-                 sync_thread = std::thread([sock = std::move(sock), is_server, uuid]()mutable {full_sync(std::move(sock), is_server, uuid);});
+                std::cout << "Connection accepted successfully!" << std::endl;
+                sync_thread = std::thread([sock = std::move(sock), is_server, uuid]()mutable {full_sync(std::move(sock), is_server, uuid);});
             }
         }
     });
@@ -119,12 +122,14 @@ int main() {
         std::cout << "HTTPServer: Request for connect to " << uuid << "\n";
         auto [success, sock, is_server] = handle_connection(GetConnectionType::Connect, uuid, ret, res);
         if(success){
+            std::cout << "Connected successfully!" << std::endl;
             sync_thread = std::thread([sock = std::move(sock), is_server, uuid]()mutable{return full_sync(std::move(sock), is_server, uuid);});
         }
     });
-
+    
     std::thread api_thread([&hs](){return hs.start_server(5000);});
     
+    std::cout << "Core started!" << std::endl;
     if(sync_thread.joinable()){
         sync_thread.join();
     }
