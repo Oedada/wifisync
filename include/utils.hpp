@@ -13,6 +13,9 @@ uint64_t fromBytes64(unsigned char* in_b);
 uint64_t fromBytes16(unsigned char* in_b);
 nlohmann::json read_json(std::filesystem::path path, bool not_exists_create);
 void write_json(std::filesystem::path path, nlohmann::json j);
+void logmsg(std::string msg);
+void logerr(std::string error);
+void logwarn(std::string warning);
 template <typename T>
 void print_vector(const std::vector<T>& v) {
     std::cout << "[ ";

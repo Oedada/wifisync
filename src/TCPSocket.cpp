@@ -175,10 +175,10 @@ std::filesystem::path TCPSocket::recv_file_with_name(std::filesystem::path dir_p
 std::string TCPSocket::ip(){
     sockaddr_in addr;
     socklen_t len = sizeof(addr);
-
-    if (getpeername(sock, (sockaddr*)&addr, &len) == 0) {
-        std::cout << inet_ntoa(addr.sin_addr) << std::endl;
-    }
+    getpeername(sock, (sockaddr*)&addr, &len);
+    // if (getpeername(sock, (sockaddr*)&addr, &len) == 0) {
+    //     std::cout << inet_ntoa(addr.sin_addr) << std::endl;
+    // }
     std::string ip;
     ip.resize(INET_ADDRSTRLEN);
     inet_ntop(AF_INET, &addr.sin_addr, ip.data(), ip.size());
@@ -187,7 +187,7 @@ std::string TCPSocket::ip(){
 
 TCPSocket::~TCPSocket(){
     if (sock >= 0){
-        std::cout << "Socket closed\n";
+        logwarn("Socket closed");
         ::close(sock);
     }
 }

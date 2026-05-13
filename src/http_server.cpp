@@ -5,13 +5,14 @@
 #include "httplib.h"
 #include <nlohmann/json.hpp>
 #include "http_server.hpp"
+#include "utils.hpp"
 #include "constants.hpp"
 
 void HTTPServer::start_server(int port){
 
     svr.set_mount_point("/", "gui/static");
 
-    printf("Server running on http://%s:%i\n",constants::LOCAL_IP_ADDR, port);
+    logmsg(std::string("Server running on http://") + constants::LOCAL_IP_ADDR  + std::to_string(port));
     svr.listen(constants::LOCAL_IP_ADDR, port);
 }
 

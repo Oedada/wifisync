@@ -11,10 +11,22 @@
 #include <map>
 #include <utility>
 
+
 enum class Message{
     Broadcast,
     ConnectRequest,
     ConnectResponse
+};
+
+enum class State {
+    Discovering,
+    Syncing
+};
+
+struct DeviceData{
+    sockaddr_in addr;
+    std::string name;
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration<long, std::ratio<1, 1000000000>>> last_seen;
 };
 
 
@@ -28,7 +40,7 @@ class UdpBroadcast{
         bool is_own_ip_bigger(sockaddr_in addr);
         void read_received_data();
         sockaddr_in get_broadcast_addr();
-        std::map<std::string, std::pair<sockaddr_in, std::string>> get_found_devices();
+        std::map<std::string, DeviceData> get_found_devices();
         
         ~UdpBroadcast();
         private:
@@ -36,7 +48,7 @@ class UdpBroadcast{
             std::string ConnectRequest;
             std::string ConnectResponse;
             std::string BroadcastMsg;
-            std::map<std::string, std::pair<sockaddr_in, std::string>> found_devices;
+            std::map<std::string, DeviceData> found_devices;
             // private methods
             std::pair<bool, std::string> add_to_found_devices_if_not_own_uuid(char* buf, size_t size);
             std::pair<std::string, std::string> parse_msg(const char *buf, const int &size);
@@ -62,16 +74,17 @@ void print_ip(sockaddr_in addr);
 class SessionInitializer{
     private:
         UdpBroadcast br;
-        bool stop_broadcast = false;
+        State state = State::Discovering;
         bool is_server;
         TCPSocket sock;
-        bool accepting_connection;
         int connect(std::string uuid);
         int create_tcp_connection(std::string uuid);
+        std::map<std::string, DeviceData> found_devices;
     public:
-        std::map<std::string, std::pair<sockaddr_in, std::string>> found_devices;
+        std::map<std::string, DeviceData> get_found_devices();
         SessionInitializer();
         void broadcast();
+        void set_state(State st);
         std::pair<bool, std::string> check_incoming_connections();
         std::tuple<bool, TCPSocket, bool> accept_connection(std::string uuid);
         std::tuple<bool, TCPSocket, bool> connect_to(std::string uuid);

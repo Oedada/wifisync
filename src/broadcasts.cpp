@@ -7,13 +7,16 @@
 #include <stdexcept>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <thread>
 #include <unistd.h>
 #include <utility>
+#include <chrono>
 #include "TCPSocket.hpp"
 #include "broadcast.hpp"
 #include "constants.hpp"
 #include "environment.hpp"
 #include "server.hpp"
+#include "utils.hpp"
 
 UdpBroadcast::UdpBroadcast(int p) : broadcast_port(p){
     if(broadcast_sock < 0){
@@ -102,7 +105,7 @@ sockaddr_in UdpBroadcast::get_broadcast_addr(){
     return broadcast_addr;
 }
 
-std::map<std::string, std::pair<sockaddr_in, std::string>> UdpBroadcast::get_found_devices(){
+std::map<std::string, DeviceData> UdpBroadcast::get_found_devices(){
     return found_devices;
 }
 
@@ -159,10 +162,16 @@ std::pair<std::string, std::string> UdpBroadcast::parse_msg(const char *buf, con
 
 std::pair<bool, std::string> UdpBroadcast::add_to_found_devices_if_not_own_uuid(char* buf, size_t size){
     auto [uuid, name] = parse_msg(buf, size);
-    std::cout << uuid << std::endl;
     if(uuid != env::get_uuid()){
         if(!found_devices.contains(uuid)){
-            found_devices[uuid] = std::make_pair(tmp_recv_addr, name);   
+            DeviceData dd;
+            dd.addr = tmp_recv_addr;
+            dd.name = name;
+            dd.last_seen = std::chrono::steady_clock::now();
+            found_devices[uuid] = dd;   
+        }
+        else{
+            found_devices[uuid].last_seen = std::chrono::steady_clock::now();
         }
         return std::make_pair(true, uuid);
     }
@@ -240,24 +249,47 @@ void print_ip(sockaddr_in addr){
 }
 
 
+
+
     SessionInitializer::SessionInitializer() : br(constants::BROADCAST_PORT){}
 
+    void SessionInitializer::set_state(State st){
+        state = st;
+    }
+
     void SessionInitializer::broadcast(){
-        while(!stop_broadcast){
-            br.send(Message::Broadcast, br.get_broadcast_addr());
-            br.read_received_data();
-            br.recv(Message::Broadcast);
-            usleep(constants::SLEEP_TIME);
-            found_devices = br.get_found_devices();
+        while(true){
+            if(state == State::Discovering){
+                br.send(Message::Broadcast, br.get_broadcast_addr());
+                br.read_received_data();
+                br.recv(Message::Broadcast);
+                std::this_thread::sleep_for(std::chrono::microseconds(constants::SLEEP_TIME));
+                found_devices = br.get_found_devices();
+            }
+            else{
+                std::this_thread::sleep_for(std::chrono::microseconds(constants::SLEEP_TIME));
+            }
         }
+    }
+
+    std::map<std::string, DeviceData> SessionInitializer::get_found_devices(){
+        std::vector<std::string> for_delete;
+        for(auto [key, val] : found_devices){
+            if(std::chrono::steady_clock::now() - val.last_seen >= std::chrono::seconds(5)){
+                for_delete.push_back(key);
+            }
+        }
+        for(auto key : for_delete){
+            found_devices.erase(key);
+        }
+        return found_devices;
     }
     
     std::pair<bool, std::string> SessionInitializer::check_incoming_connections(){
-        if(!accepting_connection){
+        if(state == State::Discovering){
             br.read_received_data();
             auto [succes, uuid] = br.recv(Message::ConnectRequest);
             if(succes){
-                stop_broadcast = true;
                 return std::make_pair(succes, uuid);
             }
             return std::make_pair(succes, uuid);
@@ -268,22 +300,24 @@ void print_ip(sockaddr_in addr){
     }
 
     std::tuple<bool, TCPSocket, bool> SessionInitializer::accept_connection(std::string uuid){
-        accepting_connection = true;
-        br.send(Message::ConnectResponse, br.get_found_devices()[uuid].first);
+        state = State::Syncing;
+        br.send(Message::ConnectResponse, br.get_found_devices()[uuid].addr);
         if(create_tcp_connection(uuid) == 0){
             return {true, std::move(sock), is_server};
         }
         else{
-            accepting_connection = false;
+            state = State::Discovering;
             return {false, std::move(sock), is_server};
         }
     }
 
     std::tuple<bool, TCPSocket, bool> SessionInitializer::connect_to(std::string uuid){
+        state = State::Syncing;
         if(connect(uuid) == 0){
             return {true, std::move(sock), is_server};
         }
         else{
+            state = State::Discovering;
             return {false, std::move(sock), is_server};
         }
     }
@@ -293,7 +327,6 @@ void print_ip(sockaddr_in addr){
     //-2 -> timeout for broadcast
     //-3 -> timeout for TCP
     int SessionInitializer::connect(std::string uuid){
-        stop_broadcast = true;
         try{
             time_t start;
             time(&start);
@@ -303,7 +336,7 @@ void print_ip(sockaddr_in addr){
                 if(timer - start > constants::TIMEOUT_TIME){
                     return -2;
                 } 
-                br.send(Message::ConnectRequest, br.get_found_devices()[uuid].first);
+                br.send(Message::ConnectRequest, br.get_found_devices()[uuid].addr);
                 br.read_received_data();
                 auto [succes, other_uuid] = br.recv(Message::ConnectResponse);
                 if(succes && (uuid == other_uuid)){
@@ -317,7 +350,7 @@ void print_ip(sockaddr_in addr){
             }
         }
         catch(std::exception &e){
-            std::cout << "Error: " << e.what();
+            logerr(e.what());
             return -1;
         }
         return 0;
@@ -327,9 +360,9 @@ void print_ip(sockaddr_in addr){
     //-1 -> timeout
     int SessionInitializer::create_tcp_connection(std::string uuid){
         // server
-        if(br.is_own_ip_bigger(br.get_found_devices()[uuid].first)){
+        if(br.is_own_ip_bigger(br.get_found_devices()[uuid].addr)){
             is_server = true;
-            std::cout << "Role: Server\n";
+            logmsg("Role - Server");
             Server serv(constants::TCP_PORT);
             time_t start;
             time(&start);
@@ -345,13 +378,13 @@ void print_ip(sockaddr_in addr){
                 }
                 usleep(constants::SLEEP_TIME);
             }
-            std::cout << "Accept connection from client\n";
+            logmsg("Accept connection from client");
         } else {
             is_server = false;
-            std::cout << "Role: Client\n";
+            logmsg("Role - Client");
             try{
                 sockaddr_in addr{};
-                addr.sin_addr = br.get_found_devices()[uuid].first.sin_addr;
+                addr.sin_addr = br.get_found_devices()[uuid].addr.sin_addr;
                 addr.sin_port = htons(constants::TCP_PORT);
                 addr.sin_family = AF_INET;
                 sock = client_connect(addr);

@@ -1,37 +1,35 @@
-#include <iostream>
 #include "change_applier.hpp"
 #include "transport.hpp"
+#include "utils.hpp"
 #include <filesystem>
 namespace fs = std::filesystem;
 
 bool ChangeApplier::safeRemove(const fs::path& path) {
     std::error_code ec;
     if (!fs::exists(path, ec)) {
-        std::cout << "Can't remove! Path does not exist\n";
+        logwarn("Can't remove! Path does not exist");
         return false;
     }
     if (!(fs::is_directory(path, ec) || fs::is_regular_file(path, ec))) {
-        std::cout << "Can't remove! Path isn't directory or file\n";
+        logwarn("Can't remove! Path isn't directory or file");
         return false;
     }
     if (path == "/" || path.empty()) {
-        std::cout << "Refusing dangerous delete\n";
+        logwarn("Refusing dangerous delete");
         return false;
     }
-    auto count = fs::remove_all(path, ec);
+    fs::remove_all(path, ec);
 
     if (ec) {
-        std::cout << "Delete failed: " << ec.message() << '\n';
+        logwarn("Delete failed: " + ec.message());
         return false;
     }
-    std::cout << "Removed " << count << " files\n";
     return true;
 }
 
 
 void ChangeApplier::apply_runit(RUnit &runit){
     if(runit.mt == ModifyType::Deleted){
-        // std::cout << "Delete: " << runit.path << "\n";
         safeRemove(runit.path);
     }
     else{

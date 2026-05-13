@@ -111,36 +111,3 @@ SUnit DifWalker::json_to_sunit(const json &node, const fs::path &cur_path, const
     }
     return u;
 }
-
-
-// int main(int argc, char** argv){
-//     bool server = false;
-//     if(argc > 1){
-//         if(argv[1][0] == 's'){
-//             server = true;
-//         }
-//     }
-//     if(server){
-//         DifWork difwork("534b4b56-d809-482b-865a-48cf82121882");
-//         difwork.shift_snapshots();
-//         difwork.calculate_dif();
-//         json dif = read_json(env::get_data_path(constants::DATA_DIR) / constants::DIFFERENCE_FILENAME, false);
-//         DifWalker dw(dif);
-//         Server s(12345);
-//         std::cout << "Done\n";
-//         TCPSocket sock = s.accept_conn();
-//         sock.send(1);
-//         auto tr = std::make_unique<Transport>(std::move(sock));
-//         init_transport(std::move(tr));
-//         dw.walk(send_u);
-//     }
-//     else{
-//         sockaddr_in addr{};
-//         addr.sin_family = AF_INET;
-//         addr.sin_port = htons(12345);
-//         inet_pton(AF_INET, "192.168.0.104", &addr.sin_addr);
-//         TCPSocket sock = client_connect(addr);
-//         Transport tr(std::move(sock));
-//         tr.walk_received(print_runit);
-//     }
-// }

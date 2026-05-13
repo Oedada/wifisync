@@ -1,6 +1,7 @@
 #include "constants.hpp"
 #include <cstdint>
 #include <fstream>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <nlohmann/json.hpp>
@@ -8,6 +9,18 @@
 // #include <iostream>
 namespace fs = std::filesystem;
 using json = nlohmann::json;
+
+void logwarn(std::string warning){
+    std::cout << "[Warning]: " << warning << std::endl;
+}
+
+void logerr(std::string error){
+    std::cerr << "[Error]: " << error << std::endl;
+}
+
+void logmsg(std::string msg){
+    std::cout << "[Dev]: " << msg << std::endl;
+}
 
 uint64_t count_subelements(json node){
     uint64_t count = 0;

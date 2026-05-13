@@ -12,19 +12,38 @@
 #include "init.hpp"
 #include <exception>
 #include <openssl/rand.h>
+#include <stdexcept>
+#include <string>
 #include <tuple>
 #include <unistd.h>
 #include <thread>
 #include <nlohmann/json.hpp>
 
-
-using json = nlohmann::json;
-SessionInitializer si;
-
 enum class GetConnectionType{
     Accept,
     Connect
 };
+
+struct Status{
+    int get() const {
+        return val;
+    }
+    int set(int v){
+        if(v > val){
+            return val = v;
+        }
+        else{
+            return val;
+        }
+    }
+    private:
+        int val = 0;
+
+};
+using json = nlohmann::json;
+SessionInitializer si;
+Status st;
+
 
 std::tuple<bool, TCPSocket, bool> handle_connection(GetConnectionType gct, std::string uuid, json body, httplib::Response& res){
     bool success = false, is_server = false;
@@ -50,42 +69,56 @@ std::tuple<bool, TCPSocket, bool> handle_connection(GetConnectionType gct, std::
 }
 
 void full_sync(TCPSocket sock, bool is_server, std::string uuid){
+    st.set(2);
+    logmsg("Calculating difference...");
     DifWork difwork(uuid);
     difwork.shift_snapshots();
     difwork.calculate_dif();
     json dif = read_json(env::get_data_path(constants::DATA_DIR) / constants::DIFFERENCE_FILENAME, false);
     DifWalker dw(dif);
+    st.set(3);
+    logmsg("Starting synchronization...");
+    sock.send(count_subelements(dif));
+    Transport tr(std::move(sock));
     if(is_server){
-        sock.send(count_subelements(dif));
-        auto tr = Transport(std::move(sock));
+        st.set(4);
         dw.walk([&](SUnit u){tr.send(u);});
+        st.set(5);
         tr.walk_received(ChangeApplier::apply_runit);
     }
     else{
-        sock.send(count_subelements(dif));
-        Transport tr(std::move(sock));
+        st.set(4);
         tr.walk_received(ChangeApplier::apply_runit);
-        std::cout << count_subelements(dif) << "\n";
+        st.set(5);
         dw.walk([&](SUnit u){tr.send(u);});
     }
+    logmsg("Successfully sync!");
+    si.set_state(State::Discovering);
+    st.set(6);
 }
 
 
 int main() {
     setvbuf(stdout, NULL, _IONBF, 0);
     init();
-    std::thread broadcast_thread([&](){return si.broadcast();});
+    std::thread broadcast_thread([&](){si.broadcast();});
     std::thread sync_thread;
     HTTPServer hs;
     
+
     hs.add_handler(RequestType::get, "/devices", [&](const httplib::Request&, httplib::Response& res) {
         json ret;
-        for(auto [key, p] : si.found_devices){
-            ret[key] = p.second;
+        for(auto [key, p] : si.get_found_devices()){
+            ret[key] = p.name;
         }
         ret["fake_device"] = "neuuid";
         res.set_content(ret.dump(), "application/json");
     });
+
+    hs.add_handler(RequestType::get, "/status", [&](const httplib::Request&, httplib::Response& res) {
+        res.set_content(std::to_string(st.get()), "plain/text");
+    });
+
     
     hs.add_handler(RequestType::get, "/incoming_connect", [&](const httplib::Request&, httplib::Response& res) {
         json ret;
@@ -94,7 +127,6 @@ int main() {
             json_error(res, "There isn't any incoming connection", {});
         }
         else{
-            std::cout << "There's incoming connection!" << std::endl;
             ret["uuid"] = uuid;
             json_ok(res, ret);
         }
@@ -109,7 +141,11 @@ int main() {
         if(answer){
             auto [success, sock, is_server] = handle_connection(GetConnectionType::Accept, uuid, ret, res);
             if(success){
-                std::cout << "Connection accepted successfully!" << std::endl;
+                st.set(1);
+                logmsg("Connection accepted successfully!");
+                if(sync_thread.joinable()){
+                    sync_thread.detach();
+                }
                 sync_thread = std::thread([sock = std::move(sock), is_server, uuid]()mutable {full_sync(std::move(sock), is_server, uuid);});
             }
         }
@@ -119,17 +155,21 @@ int main() {
         json j = json::parse(req.body);
         json ret;
         std::string uuid = j.at("uuid").get<std::string>();
-        std::cout << "HTTPServer: Request for connect to " << uuid << "\n";
+        logmsg("HTTPServer: Request for connect to " + uuid);
         auto [success, sock, is_server] = handle_connection(GetConnectionType::Connect, uuid, ret, res);
         if(success){
-            std::cout << "Connected successfully!" << std::endl;
+            st.set(1);
+            logmsg("Connected successfully!");
+            if(sync_thread.joinable()){
+                sync_thread.detach();
+            }
             sync_thread = std::thread([sock = std::move(sock), is_server, uuid]()mutable{return full_sync(std::move(sock), is_server, uuid);});
         }
     });
     
     std::thread api_thread([&hs](){return hs.start_server(5000);});
     
-    std::cout << "Core started!" << std::endl;
+    logmsg("Core started!");
     if(sync_thread.joinable()){
         sync_thread.join();
     }
