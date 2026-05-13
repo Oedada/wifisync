@@ -141,13 +141,23 @@ class MainTab(QWidget):
 
             case 1:
                 if(data["ok"]):
-                    self.log_message("Синхронизация...")
+                    request = QNetworkRequest(QUrl("http://127.0.0.1:5000/missing_uuid"))
+                    reply = self.http_manager.get(request)
+                    reply.setProperty("type", "missing_uuid")
                 else:
-                    self.log_message("Отказ от другого устройства")
-                # print(data)
+                    if(data["error"] == -2):
+                        QMessageBox.warning(
+                            self,
+                            "Синхронизация отменена",
+                            "Нет ни одного соответствующего пути для синхронизации с данным устройством"
+                        )
+                        self.log_message("Нет ни одного соответствующего пути для синхронизации с данным устройством")
+                    else:
+                        self.log_message("Отказ от другого устройства")
         
     def accepted_connection(self, data=None):
         self.accept_conn_show = False
+        self.sync(1, data)
 
     def accept_connect_dialog(self, data = None):
         if not self.accept_conn_show:

@@ -6,12 +6,14 @@ from main_tab import MainTab
 from functools import partial
 import subprocess
 import threading
+import time 
 from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from PyQt6.QtCore import QUrl, QTimer
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
     QTabWidget,
+    QInputDialog,
 )
 
 
@@ -61,7 +63,25 @@ class MainWindow(QMainWindow):
             text=True,
             bufsize=1
         )
+        time.sleep(1)
         self.sync_manager = SyncDataManager()
+        cfg = self.sync_manager.load_config()
+        if(cfg["tmp_name"]):
+            name, ok = QInputDialog.getText(
+                self,
+                "Имя",
+                'Введите имя устройства:\n'
+            )
+            while not ok or name == "":
+                name, ok = QInputDialog.getText(
+                    self,
+                    "Имя",
+                    'Введите имя устройства:\n'
+                )
+            cfg["tmp_name"] = False
+            cfg["name"] = name
+            with open(self.sync_manager.config_file, "w") as f:
+                f.write(json.dumps(cfg))
 
         self.http_manager = QNetworkAccessManager()
         self.http_manager.finished.connect(self.on_req_finished)
@@ -83,7 +103,8 @@ class MainWindow(QMainWindow):
             "devices": self.main_tab.update_devices,
             "sync": partial(self.main_tab.sync, 1),
             "incoming_connect": self.main_tab.accept_connect_dialog,
-            "accept_connection": self.main_tab.accepted_connection
+            "accept_connection": self.main_tab.accepted_connection,
+            "missing_uuid": partial(self.main_tab.sync, 2),
         }
 
         self.start_timers()
@@ -123,10 +144,15 @@ class MainWindow(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     window = MainWindow()
-    window.show()
-    app.aboutToQuit.connect(window.stop_core)
 
-    sys.exit(app.exec())
+    window.show()
+
+    try:
+        exit_code = app.exec()
+    finally:
+        window.stop_core()
+
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":

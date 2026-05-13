@@ -12,7 +12,7 @@ void HTTPServer::start_server(int port){
 
     svr.set_mount_point("/", "gui/static");
 
-    logmsg(std::string("Server running on http://") + constants::LOCAL_IP_ADDR  + std::to_string(port));
+    logmsg(std::string("Server running on http://") + constants::LOCAL_IP_ADDR + ":"  + std::to_string(port));
     svr.listen(constants::LOCAL_IP_ADDR, port);
 }
 

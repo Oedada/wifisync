@@ -17,8 +17,10 @@
 #include "environment.hpp"
 #include "server.hpp"
 #include "utils.hpp"
+#include "init.hpp"
 
 UdpBroadcast::UdpBroadcast(int p) : broadcast_port(p){
+    init();
     if(broadcast_sock < 0){
         throw std::runtime_error("Can't create socket");
     }

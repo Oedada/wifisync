@@ -1,5 +1,6 @@
 #include "TCPSocket.hpp"
 #include "broadcast.hpp"
+#include "constants.hpp"
 #include "x25519.hpp"
 #include "ed25519.hpp"
 #include "http_server.hpp"
@@ -10,9 +11,9 @@
 #include "change_applier.hpp"
 #include "dif_walker.hpp"
 #include "init.hpp"
+#include <cstdint>
 #include <exception>
 #include <openssl/rand.h>
-#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <unistd.h>
@@ -43,6 +44,7 @@ struct Status{
 using json = nlohmann::json;
 SessionInitializer si;
 Status st;
+bool missing_uuid = false;
 
 
 std::tuple<bool, TCPSocket, bool> handle_connection(GetConnectionType gct, std::string uuid, json body, httplib::Response& res){
@@ -78,6 +80,11 @@ void full_sync(TCPSocket sock, bool is_server, std::string uuid){
     DifWalker dw(dif);
     st.set(3);
     logmsg("Starting synchronization...");
+    sock.send(1);
+    uint64_t ok = sock.recv_uint64();
+    if(ok != 0){
+        return;
+    }
     sock.send(count_subelements(dif));
     Transport tr(std::move(sock));
     if(is_server){
@@ -100,7 +107,6 @@ void full_sync(TCPSocket sock, bool is_server, std::string uuid){
 
 int main() {
     setvbuf(stdout, NULL, _IONBF, 0);
-    init();
     std::thread broadcast_thread([&](){si.broadcast();});
     std::thread sync_thread;
     HTTPServer hs;
@@ -117,6 +123,10 @@ int main() {
 
     hs.add_handler(RequestType::get, "/status", [&](const httplib::Request&, httplib::Response& res) {
         res.set_content(std::to_string(st.get()), "plain/text");
+    });
+
+    hs.add_handler(RequestType::get, "/missing_uuid", [&](const httplib::Request&, httplib::Response& res) {
+        res.set_content(std::to_string(static_cast<int>(missing_uuid)), "plain/text");
     });
 
     
@@ -137,10 +147,25 @@ int main() {
         json j = json::parse(req.body);
         std::string uuid = j.at("uuid").get<std::string>();
         json ret;
+        auto cfg = read_json(env::get_data_path() / constants::DEVICES_FILE, false);
+        if(!cfg.contains(uuid) || cfg.at(uuid).at("paths").empty()){
+            ret["ok"] = false;
+            ret["error"] = -2;
+            res.set_content(ret.dump(), "application/json");
+            cfg[uuid]["name"] = si.get_found_devices()[uuid].name;
+            cfg[uuid]["first_connect"] = true;
+            cfg[uuid]["paths"] = {};
+            write_json(env::get_data_path() / constants::DEVICES_FILE, cfg);
+            logwarn("Uuid not find!");
+            auto [success, sock, is_server] = handle_connection(GetConnectionType::Accept, uuid, ret, res);
+            sock.send(1);
+            return;
+        }
         bool answer = j.at("answer").get<bool>();
         if(answer){
             auto [success, sock, is_server] = handle_connection(GetConnectionType::Accept, uuid, ret, res);
             if(success){
+                ret["ok"] = true;
                 st.set(1);
                 logmsg("Connection accepted successfully!");
                 if(sync_thread.joinable()){
@@ -148,13 +173,32 @@ int main() {
                 }
                 sync_thread = std::thread([sock = std::move(sock), is_server, uuid]()mutable {full_sync(std::move(sock), is_server, uuid);});
             }
+            else{
+                ret["ok"] = false;
+                ret["error"] = -1; //connection refused
+            }
         }
+        res.set_content(ret.dump(), "application/json");
     });
     
     hs.add_handler(RequestType::post, "/connect", [&](const httplib::Request& req, httplib::Response& res) {
         json j = json::parse(req.body);
         json ret;
         std::string uuid = j.at("uuid").get<std::string>();
+        auto cfg = read_json(env::get_data_path() / constants::DEVICES_FILE, false);
+        if(!cfg.contains(uuid) || cfg.at(uuid).at("paths").empty()){
+            ret["ok"] = false;
+            ret["error"] = -2;
+            res.set_content(ret.dump(), "application/json");
+            cfg[uuid]["name"] = si.get_found_devices()[uuid].name;
+            cfg[uuid]["first_connect"] = true;
+            cfg[uuid]["paths"] = {};
+            write_json(env::get_data_path() / constants::DEVICES_FILE, cfg);
+            logwarn("Uuid not find!");
+            auto [success, sock, is_server] = handle_connection(GetConnectionType::Accept, uuid, ret, res);
+            sock.send(1);
+            return;
+        }
         logmsg("HTTPServer: Request for connect to " + uuid);
         auto [success, sock, is_server] = handle_connection(GetConnectionType::Connect, uuid, ret, res);
         if(success){

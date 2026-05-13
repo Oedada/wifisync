@@ -87,6 +87,8 @@ class SettingsTab(QWidget):
     def load_paths(self):
         self.paths_tree.blockSignals(True)
         devices = self.manager.load_devices()
+        if not devices:
+            return
         for dev_key, dev_val in devices.items():
             device_item = QTreeWidgetItem([dev_val["name"]])
             device_item.setData(0, Qt.ItemDataRole.UserRole, dev_key)
@@ -137,6 +139,14 @@ class SettingsTab(QWidget):
         if not folder:
             return
 
+        devices = self.manager.load_devices()
+        if devices is None:
+                    QMessageBox.warning(
+                        self,
+                        "Сне удалось добавить путь",
+                        "Нет ни одного знакомого устройства"
+                    )
+                    return
         added = self.manager.add_sync_path(folder)
 
         if not added:
@@ -148,12 +158,13 @@ class SettingsTab(QWidget):
             return
 
 
-        devices = self.manager.load_devices()
-
+        print(folder)
         folder = str(Path(folder).resolve())
-
         for dev_key, dev_data in devices.items():
             device_item = self.find_top_level_by_text(dev_data["name"])
+            if device_item is None:
+                device_item = QTreeWidgetItem([dev_data["name"]])
+                self.paths_tree.addTopLevelItem(device_item)
             device_item.setData(0, Qt.ItemDataRole.UserRole, dev_key)
             if device_item is None:
                 device_item = QTreeWidgetItem([folder])
@@ -171,9 +182,8 @@ class SettingsTab(QWidget):
                 device_item.addChild(child)
                 child.setFlags(child.flags() | Qt.ItemFlag.ItemIsEditable)
 
-                if "paths" not in dev_data:
+                if "paths" not in dev_data or not dev_data["paths"]:
                     dev_data["paths"] = {}
-
                 dev_data["paths"][folder] = str(
                     Path(other_path)
                 )

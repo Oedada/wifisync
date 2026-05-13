@@ -43,6 +43,14 @@ class SyncDataManager:
     def ignores_file(self):
         return self.data_path / IGNORES_PATH
 
+    @property
+    def config_file(self):
+        return self.data_path / "config.json"
+
+    def load_config(self) -> json:
+        with open(self.config_file, "r") as f:
+            return json.load(f)
+
     def load_devices(self) -> json:
         if not self.devices_file.exists():
             return {}
