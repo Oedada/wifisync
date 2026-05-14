@@ -8,6 +8,7 @@ cmake-build-*/
 CMakeCache.txt
 CMakeFiles/
 compile_commands.json
+gui/gui/__pycache__/
 
 # clangd / vscode
 .vscode/
