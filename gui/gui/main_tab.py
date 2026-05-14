@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 )
 
 messages_for_status = {
+    0:"Синхронизация начинается...",
     1:"Подключено к другому устройству",
     2:"Идёт подсчёт разницы...",
     3:"Начинется синхронизация...",
@@ -93,7 +94,7 @@ class MainTab(QWidget):
         layout.addWidget(splitter)
         self.found_devices = {}
         self.start_logs_timers()
-        self.cur_data = -1
+        self.cur_data = 0
 
     def confirm_accept_connection(self, uuid: str):
         result = QMessageBox.question(
@@ -109,11 +110,13 @@ class MainTab(QWidget):
             return False
 
     def log_step(self, data):
-        if data != self.cur_data:
-            if data in messages_for_status.keys():
-                for i in range(self.cur_data, data+1):
-                    self.log_message(messages_for_status[data])
-                self.cur_data = data
+        if(self.cur_data > data):
+            self.cur_data = data
+        if data in messages_for_status.keys():
+            print(self.cur_data, data, messages_for_status[data])
+            while(self.cur_data != data):
+                self.cur_data += 1
+                self.log_message(messages_for_status[self.cur_data])
 
                 
 

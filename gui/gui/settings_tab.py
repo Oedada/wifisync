@@ -147,46 +147,37 @@ class SettingsTab(QWidget):
                         "Нет ни одного знакомого устройства"
                     )
                     return
-        added = self.manager.add_sync_path(folder)
-
-        if not added:
-            QMessageBox.information(
-                self,
-                "Информация",
-                "Папка уже добавлена"
-            )
-            return
+        self.manager.add_sync_path(folder)
 
 
         print(folder)
         folder = str(Path(folder).resolve())
         for dev_key, dev_data in devices.items():
-            device_item = self.find_top_level_by_text(dev_data["name"])
-            if device_item is None:
-                device_item = QTreeWidgetItem([dev_data["name"]])
-                self.paths_tree.addTopLevelItem(device_item)
-            device_item.setData(0, Qt.ItemDataRole.UserRole, dev_key)
-            if device_item is None:
-                device_item = QTreeWidgetItem([folder])
-                self.paths_tree.addTopLevelItem(device_item)
-            other_path, ok = QInputDialog.getText(
-                self,
-                "Соответствующий путь",
-                f'Введите путь для:\n'
-                f'{dev_data["name"]}'
-            )
-
-            if ok and other_path.strip():
-
-                child = QTreeWidgetItem([folder, other_path])
-                device_item.addChild(child)
-                child.setFlags(child.flags() | Qt.ItemFlag.ItemIsEditable)
-
-                if "paths" not in dev_data or not dev_data["paths"]:
-                    dev_data["paths"] = {}
-                dev_data["paths"][folder] = str(
-                    Path(other_path)
+            if folder not in dev_data["paths"]:
+                device_item = self.find_top_level_by_text(dev_data["name"])
+                if device_item is None:
+                    device_item = QTreeWidgetItem([dev_data["name"]])
+                    self.paths_tree.addTopLevelItem(device_item)
+                device_item.setData(0, Qt.ItemDataRole.UserRole, dev_key)
+                if device_item is None:
+                    device_item = QTreeWidgetItem([folder])
+                    self.paths_tree.addTopLevelItem(device_item)
+                other_path, ok = QInputDialog.getText(
+                    self,
+                    "Соответствующий путь",
+                    f'Введите путь для:\n'
+                    f'{dev_data["name"]}'
                 )
+                if ok and other_path.strip():
+                    child = QTreeWidgetItem([folder, other_path])
+                    device_item.addChild(child)
+                    child.setFlags(child.flags() | Qt.ItemFlag.ItemIsEditable)
+
+                    if "paths" not in dev_data or not dev_data["paths"]:
+                        dev_data["paths"] = {}
+                    dev_data["paths"][folder] = str(
+                        Path(other_path)
+                    )
 
         self.manager.save_devices(devices)
         self.paths_tree.blockSignals(False)
