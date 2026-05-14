@@ -11,6 +11,8 @@
 #include "change_applier.hpp"
 #include "dif_walker.hpp"
 #include "init.hpp"
+#include <sys/prctl.h>
+#include <signal.h>
 #include <cstdint>
 #include <exception>
 #include <openssl/rand.h>
@@ -106,6 +108,7 @@ void full_sync(TCPSocket sock, bool is_server, std::string uuid){
 
 
 int main() {
+    prctl(PR_SET_PDEATHSIG, SIGKILL);
     setvbuf(stdout, NULL, _IONBF, 0);
     std::thread broadcast_thread([&](){si.broadcast();});
     std::thread sync_thread;
@@ -152,13 +155,6 @@ int main() {
             ret["ok"] = false;
             ret["error"] = -2;
             res.set_content(ret.dump(), "application/json");
-            cfg[uuid]["name"] = si.get_found_devices()[uuid].name;
-            cfg[uuid]["first_connect"] = true;
-            cfg[uuid]["paths"] = {};
-            write_json(env::get_data_path() / constants::DEVICES_FILE, cfg);
-            logwarn("Uuid not find!");
-            auto [success, sock, is_server] = handle_connection(GetConnectionType::Accept, uuid, ret, res);
-            sock.send(1);
             return;
         }
         bool answer = j.at("answer").get<bool>();
@@ -190,13 +186,7 @@ int main() {
             ret["ok"] = false;
             ret["error"] = -2;
             res.set_content(ret.dump(), "application/json");
-            cfg[uuid]["name"] = si.get_found_devices()[uuid].name;
-            cfg[uuid]["first_connect"] = true;
-            cfg[uuid]["paths"] = {};
-            write_json(env::get_data_path() / constants::DEVICES_FILE, cfg);
             logwarn("Uuid not find!");
-            auto [success, sock, is_server] = handle_connection(GetConnectionType::Accept, uuid, ret, res);
-            sock.send(1);
             return;
         }
         logmsg("HTTPServer: Request for connect to " + uuid);

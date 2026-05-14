@@ -56,7 +56,10 @@ class SyncDataManager:
             return {}
 
         with open(self.devices_file, "r") as f:
-            return json.load(f)
+            j =  json.load(f)
+            if j is None:
+                return {}
+        return j
 
     def save_devices(self, devices):
         with open(self.devices_file, "w") as f:

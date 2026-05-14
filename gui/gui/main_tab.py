@@ -84,15 +84,16 @@ class MainTab(QWidget):
         layout.addWidget(splitter)
         self.found_devices = {}
 
-    def confirm_accept_connection(self, name: str):
+    def confirm_accept_connection(self, uuid: str):
         result = QMessageBox.question(
             self,
             "Запрос на подключение",
-            f"Вы хотите подключиться к {name}",
+            f"Вы хотите подключиться к {self.get_devices_form_list()[uuid]}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
 
         if result == QMessageBox.StandardButton.Yes:
+            self.check_uuid(uuid)
             return True
         else:
             return False
@@ -102,18 +103,31 @@ class MainTab(QWidget):
         devices = {}
         for i in range(self.devices_list.count()):
             item = self.devices_list.item(i)
-            devices[item.text()] = item.data(Qt.ItemDataRole.UserRole)
+            devices[item.data(Qt.ItemDataRole.UserRole)] = item.text()
         return devices
 
     def update_devices(self, devices):
+        self.found_devices = {}
+        # добавляем устройства
         for uuid, name in devices.items():
             self.found_devices[uuid] = name
 
+        for_delete = []
+        # перебираем по списку, удаляем лишние из виджета и уже добавленные из словаря
+        for i in range(self.devices_list.count()):
+            uuid = self.devices_list.item(i).data(Qt.ItemDataRole.UserRole)
+            if uuid not in self.found_devices.keys():
+                for_delete.append(self.devices_list.item(i))
+            if uuid in self.found_devices.keys():
+                self.found_devices.pop(uuid)
+        # удаляем   
+        for el in for_delete:
+            self.devices_list.takeItem(self.devices_list.row(el))
+        # лобавляем новые
         for uuid, name in self.found_devices.items():
-            if name not in self.get_devices_form_list().keys():
-                item = QListWidgetItem(name)
-                item.setData(Qt.ItemDataRole.UserRole, uuid)
-                self.devices_list.addItem(item)
+            item = QListWidgetItem(name)
+            item.setData(Qt.ItemDataRole.UserRole, uuid)
+            self.devices_list.addItem(item)
 
     def log_message(self, text, data=None):
         if isinstance(text, QNetworkReply.NetworkError):
@@ -122,6 +136,21 @@ class MainTab(QWidget):
         else:
             self.logs.append(str(text))
             
+    def check_uuid(self, uuid: str):
+        devices = self.sync_manager.load_devices()
+        if uuid not in devices.keys():
+            QMessageBox.warning(
+                self,
+                "Синхронизация отменена",
+                "Нет ни одного соответствующего пути для синхронизации с данным устройством"
+            )
+            self.log_message("Нет ни одного соответствующего пути для синхронизации с данным устройством")
+            devices[uuid] = {}
+            for fuuid, fname in self.get_devices_form_list().items():
+                if fuuid == uuid:
+                    devices[uuid]["name"] = fname
+            devices[uuid]["first_connect"] = True
+            devices[uuid]["paths"] = {}
 
     def sync(self, step: int = 0, data = None):
         match step:
@@ -130,9 +159,11 @@ class MainTab(QWidget):
                 if not item:
                     QMessageBox.warning(self, "Ошибка", "Выберите устройство")
                     return
+                uuid = item.data(Qt.ItemDataRole.UserRole)
+                self.check_uuid(uuid)
                 request = QNetworkRequest(QUrl("http://127.0.0.1:5000/connect"))
                 data = QByteArray()
-                data.append(json.dumps({"uuid": item.data(Qt.ItemDataRole.UserRole)}).encode("UTF-8"))
+                data.append(json.dumps({"uuid": uuid}).encode("UTF-8"))
                 request.setHeader(QNetworkRequest.KnownHeaders.ContentTypeHeader, "application/json")
                 self.log_message("Подключение к устройству...")
                 reply = self.http_manager.post(request, data)
@@ -145,14 +176,8 @@ class MainTab(QWidget):
                     reply = self.http_manager.get(request)
                     reply.setProperty("type", "missing_uuid")
                 else:
-                    if(data["error"] == -2):
-                        QMessageBox.warning(
-                            self,
-                            "Синхронизация отменена",
-                            "Нет ни одного соответствующего пути для синхронизации с данным устройством"
-                        )
-                        self.log_message("Нет ни одного соответствующего пути для синхронизации с данным устройством")
-                    else:
+                    print(data["error"])
+                    if(data["error"] == -1):
                         self.log_message("Отказ от другого устройства")
         
     def accepted_connection(self, data=None):
@@ -164,7 +189,7 @@ class MainTab(QWidget):
             if data["ok"]:
                 print("Yep")
                 self.accept_conn_show = True
-                accept = self.confirm_accept_connection(self.found_devices[data["uuid"]])
+                accept = self.confirm_accept_connection(data["uuid"])
                 if accept:
                     request = QNetworkRequest(QUrl("http://127.0.0.1:5000/accept_connect"))
                     send_data = QByteArray()
