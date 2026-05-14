@@ -113,6 +113,7 @@ class MainWindow(QMainWindow):
             "incoming_connect": self.main_tab.accept_connect_dialog,
             "accept_connection": self.main_tab.accepted_connection,
             "missing_uuid": partial(self.main_tab.sync, 2),
+            "status": self.main_tab.log_step,
         }
 
         self.start_timers()

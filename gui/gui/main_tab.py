@@ -2,7 +2,7 @@ from data_manager import SyncDataManager
 from gui_utils import get_btn
 import json
 from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
-from PyQt6.QtCore import Qt, QUrl, QByteArray
+from PyQt6.QtCore import Qt, QUrl, QByteArray, QTimer
 from PyQt6.QtWidgets import (
     QGroupBox,
     QLabel,
@@ -14,6 +14,15 @@ from PyQt6.QtWidgets import (
     QWidget,
     QListWidgetItem,
 )
+
+messages_for_status = {
+    1:"Подключено к другому устройству",
+    2:"Идёт подсчёт разницы...",
+    3:"Начинется синхронизация...",
+    4:"Этап синхронизации 1...",
+    5:"Этап синхронизации 2...",
+    6:"Успешная синхронизация!"
+}
 
 
 # =========================
@@ -83,6 +92,8 @@ class MainTab(QWidget):
         layout.addWidget(title)
         layout.addWidget(splitter)
         self.found_devices = {}
+        self.start_logs_timers()
+        self.cur_data = -1
 
     def confirm_accept_connection(self, uuid: str):
         result = QMessageBox.question(
@@ -96,6 +107,24 @@ class MainTab(QWidget):
             return self.check_uuid(uuid)
         else:
             return False
+
+    def log_step(self, data):
+        if data != self.cur_data:
+            for i in range(self.cur_data, data+1):
+                self.log_message(messages_for_status[data])
+            self.cur_data = data
+
+                
+
+    def request_status(self):
+        request = QNetworkRequest(QUrl("http://127.0.0.1:5000/status"))
+        reply = self.http_manager.get(request)
+        reply.setProperty("type", "status")
+
+    def start_logs_timers(self):
+        self.log_timer = QTimer(self)
+        self.log_timer.timeout.connect(self.request_status)
+        self.log_timer.start(500)
 
 
     def get_devices_form_list(self) -> dict:
@@ -118,6 +147,11 @@ class MainTab(QWidget):
             if uuid not in self.found_devices.keys():
                 for_delete.append(self.devices_list.item(i))
             if uuid in self.found_devices.keys():
+                if self.devices_list.item(i).text() != self.found_devices[uuid]:
+                    self.devices_list.takeItem(self.devices_list.row(self.devices_list.item(i)))
+                    item = QListWidgetItem(self.found_devices[uuid])
+                    item.setData(Qt.ItemDataRole.UserRole, uuid)
+                    self.devices_list.addItem(item)
                 self.found_devices.pop(uuid)
         # удаляем   
         for el in for_delete:
@@ -137,7 +171,7 @@ class MainTab(QWidget):
             
     def check_uuid(self, uuid: str):
         devices = self.sync_manager.load_devices()
-        if uuid not in devices.keys():
+        if uuid not in devices.keys() or len(devices[uuid]["paths"]) == 0:
             QMessageBox.warning(
                 self,
                 "Синхронизация отменена",
@@ -164,15 +198,15 @@ class MainTab(QWidget):
                     QMessageBox.warning(self, "Ошибка", "Выберите устройство")
                     return
                 uuid = item.data(Qt.ItemDataRole.UserRole)
-                self.check_uuid(uuid)
-                request = QNetworkRequest(QUrl("http://127.0.0.1:5000/connect"))
-                data = QByteArray()
-                data.append(json.dumps({"uuid": uuid}).encode("UTF-8"))
-                request.setHeader(QNetworkRequest.KnownHeaders.ContentTypeHeader, "application/json")
-                self.log_message("Подключение к устройству...")
-                reply = self.http_manager.post(request, data)
-                reply.errorOccurred.connect(self.log_message)
-                reply.setProperty("type", "sync")
+                if self.check_uuid(uuid):
+                    request = QNetworkRequest(QUrl("http://127.0.0.1:5000/connect"))
+                    data = QByteArray()
+                    data.append(json.dumps({"uuid": uuid}).encode("UTF-8"))
+                    request.setHeader(QNetworkRequest.KnownHeaders.ContentTypeHeader, "application/json")
+                    self.log_message("Подключение к устройству...")
+                    reply = self.http_manager.post(request, data)
+                    reply.errorOccurred.connect(self.log_message)
+                    reply.setProperty("type", "sync")
 
             case 1:
                 if(data["ok"]):

@@ -32,12 +32,7 @@ struct Status{
         return val;
     }
     int set(int v){
-        if(v > val){
-            return val = v;
-        }
-        else{
-            return val;
-        }
+        return val = v;
     }
     private:
         int val = 0;
@@ -120,7 +115,7 @@ int main() {
         for(auto [key, p] : si.get_found_devices()){
             ret[key] = p.name;
         }
-        ret["fake_device"] = "neuuid";
+        // ret["fake_device"] = "neuuid";
         res.set_content(ret.dump(), "application/json");
     });
 
