@@ -97,6 +97,7 @@ void full_sync(TCPSocket sock, bool is_server, std::string uuid){
         st.set(5);
         dw.walk([&](SUnit u){tr.send(u);});
     }
+    difwork.shift_snapshots();
     print_vector(conflicts);
     logmsg("Successfully sync!");
     si.set_state(State::Discovering);
