@@ -110,9 +110,10 @@ class MainTab(QWidget):
 
     def log_step(self, data):
         if data != self.cur_data:
-            for i in range(self.cur_data, data+1):
-                self.log_message(messages_for_status[data])
-            self.cur_data = data
+            if data in messages_for_status.keys():
+                for i in range(self.cur_data, data+1):
+                    self.log_message(messages_for_status[data])
+                self.cur_data = data
 
                 
 
