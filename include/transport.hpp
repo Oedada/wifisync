@@ -2,8 +2,10 @@
 #include "TCPSocket.hpp"
 #include <functional>
 #include <map>
+#include <nlohmann/json_fwd.hpp>
 #include <variant>
 
+using json = nlohmann::json;
 
 namespace fs = std::filesystem;
 
@@ -60,12 +62,12 @@ struct RUnit{
 class Transport{
     private:
         TCPSocket sock;
-        void walk_unit(void (*emit)(RUnit&), fs::path parent_path);
+        void walk_unit(void (*emit)(RUnit&), fs::path parent_path, json &dif_sector, std::vector<fs::path> &conflicts);
     public:
         Transport(TCPSocket s);
         void send(SUnit u);
         void set(RUnit &u);
-        void walk_received(void (*emit)(RUnit&));
+        std::vector<fs::path> walk_received(void (*emit)(RUnit&));
 };
 
 std::ostream& operator<<(std::ostream& stream, RUnit u);

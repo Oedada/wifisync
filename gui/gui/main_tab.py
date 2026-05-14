@@ -111,9 +111,11 @@ class MainTab(QWidget):
 
     def log_step(self, data):
         if(self.cur_data > data):
-            self.cur_data = data
+            self.cur_data = 0
+            while(self.cur_data != data):
+                self.cur_data += 1
+                self.log_message(messages_for_status[self.cur_data])
         if data in messages_for_status.keys():
-            print(self.cur_data, data, messages_for_status[data])
             while(self.cur_data != data):
                 self.cur_data += 1
                 self.log_message(messages_for_status[self.cur_data])
@@ -128,7 +130,7 @@ class MainTab(QWidget):
     def start_logs_timers(self):
         self.log_timer = QTimer(self)
         self.log_timer.timeout.connect(self.request_status)
-        self.log_timer.start(500)
+        self.log_timer.start(100)
 
 
     def get_devices_form_list(self) -> dict:
@@ -141,7 +143,6 @@ class MainTab(QWidget):
     def update_devices(self, devices):
         if devices is None:
             return
-        print(devices)
         self.found_devices = {}
         # добавляем устройства
         for uuid, name in devices.items():

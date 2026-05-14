@@ -84,18 +84,20 @@ void full_sync(TCPSocket sock, bool is_server, std::string uuid){
     }
     sock.send(count_subelements(dif));
     Transport tr(std::move(sock));
+    std::vector<fs::path> conflicts;
     if(is_server){
         st.set(4);
         dw.walk([&](SUnit u){tr.send(u);});
         st.set(5);
-        tr.walk_received(ChangeApplier::apply_runit);
+        conflicts = tr.walk_received(ChangeApplier::apply_runit);
     }
     else{
         st.set(4);
-        tr.walk_received(ChangeApplier::apply_runit);
+        conflicts = tr.walk_received(ChangeApplier::apply_runit);
         st.set(5);
         dw.walk([&](SUnit u){tr.send(u);});
     }
+    print_vector(conflicts);
     logmsg("Successfully sync!");
     si.set_state(State::Discovering);
     st.set(6);

@@ -1,9 +1,17 @@
 #include "transport.hpp"
 #include "TCPSocket.hpp"
+#include "constants.hpp"
+#include "environment.hpp"
+#include "dif_walker.hpp"
+#include "utils.hpp"
 #include <cstdint>
 #include <netinet/in.h>
+#include <nlohmann/json_fwd.hpp>
+#include <openssl/conf.h>
 #include <sys/socket.h>
 #include <iostream>
+
+using json = nlohmann::json;
 
 Transport::Transport(TCPSocket s) : sock(std::move(s)){}
 
@@ -66,26 +74,58 @@ void Transport::set(RUnit &u){
     }
 }
 
-void Transport::walk_received(void (*emit)(RUnit&)){
+std::vector<fs::path> Transport::walk_received(void (*emit)(RUnit&)){
     uint64_t count_roots = sock.recv_uint64();
+    json dif = read_json(env::get_data_path(constants::DATA_DIR) / constants::DIFFERENCE_FILENAME, 0);
+    std::vector<fs::path> conflicts;
     for(uint64_t i = 0; i < count_roots; i++){
-        walk_unit(emit, "");
+        walk_unit(emit, "", dif, conflicts);
     }
+    return conflicts;
 }
 
-void Transport::walk_unit(void (*emit)(RUnit&), fs::path parent_path){
+void Transport::walk_unit(void (*emit)(RUnit&), fs::path parent_path, json &dif_sector, std::vector<fs::path> &conflicts){
     RUnit runit;
     set(runit);
     std::string name = runit.path;
+    json dif_unit_sector;
+    if(dif_sector.contains(name)){
+        dif_unit_sector = dif_sector.at(name);
+    } else{
+        dif_unit_sector = nullptr;
+    }
     if(parent_path == ""){
         runit.path = name;
     } else {
         runit.path = parent_path / name;
     }
-    emit(runit);
+    if(!dif_unit_sector.is_null()){
+        SUnit own_dif_sunit = DifWalker::json_to_sunit(dif_unit_sector, parent_path / name, name);
+        if(runit.ut == UnitType::File){
+            if(!(runit.mt == ModifyType::Deleted && own_dif_sunit.mt == ModifyType::Deleted)){
+                conflicts.push_back(runit.path);
+                std::get<std::function<void(fs::path)>>(runit.data)(env::get_data_path(constants::DATA_DIR) / "tmp.tmp");
+            }
+            else{
+                emit(runit);
+            }
+        }
+        else{
+            if((runit.mt == ModifyType::Deleted && own_dif_sunit.mt != ModifyType::Deleted) || (runit.mt != ModifyType::Deleted && own_dif_sunit.mt == ModifyType::Deleted)){
+                conflicts.push_back(runit.path);
+                return;
+            }
+            else{
+                emit(runit);
+            }
+        }
+    }
+    else{
+        emit(runit);
+    }
     if(runit.ut == UnitType::Directory){
         for(uint64_t j = 0; j < std::get<DirData>(runit.data).subunits_number; j++){
-            walk_unit(emit, parent_path / name);
+            walk_unit(emit, parent_path / name, dif_unit_sector, conflicts);
         }
     }
 }
