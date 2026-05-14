@@ -52,10 +52,7 @@ class MainWindow(QMainWindow):
                 break
             print(line, end="", flush=True)
 
-
-    def __init__(self):
-        super().__init__()
-
+    def start_core(self):
         self.core = subprocess.Popen(
             ["build/app"],
             stdout=subprocess.PIPE,
@@ -63,7 +60,15 @@ class MainWindow(QMainWindow):
             text=True,
             bufsize=1
         )
-        time.sleep(1)
+        time.sleep(0.5)
+
+    def stop_core(self):
+        self.core.kill()
+
+    def __init__(self):
+        super().__init__()
+        self.start_core()
+        
         self.sync_manager = SyncDataManager()
         cfg = self.sync_manager.load_config()
         if(cfg["tmp_name"]):
@@ -82,6 +87,9 @@ class MainWindow(QMainWindow):
             cfg["name"] = name
             with open(self.sync_manager.config_file, "w") as f:
                 f.write(json.dumps(cfg))
+            self.stop_core()
+            time.sleep(0.5)
+            self.start_core()
 
         self.http_manager = QNetworkAccessManager()
         self.http_manager.finished.connect(self.on_req_finished)
@@ -129,9 +137,6 @@ class MainWindow(QMainWindow):
                 margin-top: 10px;
             }
         """)
-
-    def stop_core(self):
-        self.core.kill()
 
 # =========================
 # ENTRYPOINT
