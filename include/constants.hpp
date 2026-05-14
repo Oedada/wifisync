@@ -25,7 +25,7 @@ namespace constants{
     
     ///network
     const int SLEEP_TIME = 200000;
-    const int TIMEOUT_TIME = 15;
+    const int TIMEOUT_TIME = 3;
     const char StaticBroadcastMessage[] = "Wifisync Hello Wifi:";
     const char StaticRequestConnect[] = "Wifisync Connect Request:";
     const char StaticResponseConnect[] = "Wifisync Connect Response:";

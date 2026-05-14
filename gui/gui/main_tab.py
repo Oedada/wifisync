@@ -136,6 +136,9 @@ class MainTab(QWidget):
         return devices
 
     def update_devices(self, devices):
+        if devices is None:
+            return
+        print(devices)
         self.found_devices = {}
         # добавляем устройства
         for uuid, name in devices.items():

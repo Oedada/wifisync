@@ -44,6 +44,8 @@ class MainWindow(QMainWindow):
 
     def on_req_finished(self, reply: QNetworkReply):
         req_type = reply.property("type")
+        # if reply.error():
+        #     return
         self.req_type_to_callback[req_type](json.loads(reply.readAll().data().decode()))
 
     def read_core_output_loop(self):
