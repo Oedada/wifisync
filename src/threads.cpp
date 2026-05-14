@@ -11,6 +11,7 @@
 #include "change_applier.hpp"
 #include "dif_walker.hpp"
 #include "init.hpp"
+#include <cstddef>
 #include <sys/prctl.h>
 #include <signal.h>
 #include <cstdint>
@@ -42,6 +43,7 @@ using json = nlohmann::json;
 SessionInitializer si;
 Status st;
 bool missing_uuid = false;
+std::vector<fs::path> conflicts;
 
 
 std::tuple<bool, TCPSocket, bool> handle_connection(GetConnectionType gct, std::string uuid, json body, httplib::Response& res){
@@ -68,6 +70,7 @@ std::tuple<bool, TCPSocket, bool> handle_connection(GetConnectionType gct, std::
 }
 
 void full_sync(TCPSocket sock, bool is_server, std::string uuid){
+    conflicts = {};
     st.set(2);
     logmsg("Calculating difference...");
     DifWork difwork(uuid);
@@ -84,7 +87,6 @@ void full_sync(TCPSocket sock, bool is_server, std::string uuid){
     }
     sock.send(count_subelements(dif));
     Transport tr(std::move(sock));
-    std::vector<fs::path> conflicts;
     if(is_server){
         st.set(4);
         dw.walk([&](SUnit u){tr.send(u);});
@@ -124,6 +126,14 @@ int main() {
 
     hs.add_handler(RequestType::get, "/status", [&](const httplib::Request&, httplib::Response& res) {
         res.set_content(std::to_string(st.get()), "plain/text");
+    });
+
+    hs.add_handler(RequestType::get, "/conflicts", [&](const httplib::Request&, httplib::Response& res) {
+        json ret = {};
+        for(size_t i = 0; i < conflicts.size(); i++){
+            ret[i] = conflicts[i];
+        }
+        res.set_content(ret.dump(), "application/json");
     });
 
     hs.add_handler(RequestType::get, "/missing_uuid", [&](const httplib::Request&, httplib::Response& res) {

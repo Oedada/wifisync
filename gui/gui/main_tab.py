@@ -111,6 +111,10 @@ class MainTab(QWidget):
 
     def log_step(self, data):
         if(self.cur_data > data):
+            if data == 6:
+                request = QNetworkRequest(QUrl("http://127.0.0.1:5000/conflicts"))
+                reply = self.http_manager.get(request)
+                reply.setProperty("type", "conflicts")
             self.cur_data = 0
             while(self.cur_data != data):
                 self.cur_data += 1
@@ -213,18 +217,19 @@ class MainTab(QWidget):
                     request.setHeader(QNetworkRequest.KnownHeaders.ContentTypeHeader, "application/json")
                     self.log_message("Подключение к устройству...")
                     reply = self.http_manager.post(request, data)
-                    reply.errorOccurred.connect(self.log_message)
+                    # reply.errorOccurred.connect(self.log_message)
                     reply.setProperty("type", "sync")
 
             case 1:
-                if(data["ok"]):
-                    request = QNetworkRequest(QUrl("http://127.0.0.1:5000/missing_uuid"))
-                    reply = self.http_manager.get(request)
-                    reply.setProperty("type", "missing_uuid")
-                else:
-                    print(data["error"])
+                if(not data["ok"]):
                     if(data["error"] == -1):
                         self.log_message("Отказ от другого устройства")
+            case 2:
+                print(data)
+                if data is None:
+                    return
+                for i in data:
+                    self.conflicts.append(i)
         
     def accepted_connection(self, data=None):
         self.accept_conn_show = False
