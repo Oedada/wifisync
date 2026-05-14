@@ -111,10 +111,6 @@ class MainTab(QWidget):
 
     def log_step(self, data):
         if(self.cur_data > data):
-            if data == 6:
-                request = QNetworkRequest(QUrl("http://127.0.0.1:5000/conflicts"))
-                reply = self.http_manager.get(request)
-                reply.setProperty("type", "conflicts")
             self.cur_data = 0
             while(self.cur_data != data):
                 self.cur_data += 1
@@ -123,6 +119,10 @@ class MainTab(QWidget):
             while(self.cur_data != data):
                 self.cur_data += 1
                 self.log_message(messages_for_status[self.cur_data])
+                if self.cur_data == 6:
+                    request = QNetworkRequest(QUrl("http://127.0.0.1:5000/conflicts"))
+                    reply = self.http_manager.get(request)
+                    reply.setProperty("type", "conflicts")
 
                 
 
