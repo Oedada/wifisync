@@ -93,8 +93,7 @@ class MainTab(QWidget):
         )
 
         if result == QMessageBox.StandardButton.Yes:
-            self.check_uuid(uuid)
-            return True
+            return self.check_uuid(uuid)
         else:
             return False
 
