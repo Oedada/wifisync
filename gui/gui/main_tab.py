@@ -151,6 +151,11 @@ class MainTab(QWidget):
                     devices[uuid]["name"] = fname
             devices[uuid]["first_connect"] = True
             devices[uuid]["paths"] = {}
+            with open(self.sync_manager.devices_file, "w") as f:
+                f.write(json.dumps(devices))
+            return False
+        else:
+            return True
 
     def sync(self, step: int = 0, data = None):
         match step:

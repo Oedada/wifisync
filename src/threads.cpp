@@ -82,7 +82,7 @@ void full_sync(TCPSocket sock, bool is_server, std::string uuid){
     DifWalker dw(dif);
     st.set(3);
     logmsg("Starting synchronization...");
-    sock.send(1);
+    sock.send(0);
     uint64_t ok = sock.recv_uint64();
     if(ok != 0){
         return;
