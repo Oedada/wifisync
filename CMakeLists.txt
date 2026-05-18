@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(wifisync)
+project(wifisync VERSION 0.1.0)
 
 # set(CMAKE_CXX_COMPILER clang++)
 set(CMAKE_CXX_STANDARD 20)
