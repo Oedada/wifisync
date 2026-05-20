@@ -1,0 +1,1 @@
+ /home/oedada/Projects/apps/Wifisync/wifisync/gui/flutter_app/.dart_tool/flutter_build/e7cdd44f64d9c0bde94a50db2f1e0be2/native_assets.json: 
