@@ -5,7 +5,7 @@ project(wifisync VERSION 0.1.0)
 # set(CMAKE_CXX_COMPILER clang++)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
+add_subdirectory(external)
 include(FetchContent)
 
 fetchcontent_declare(
@@ -48,6 +48,7 @@ add_executable(app
   src/transport.cpp
   src/dif_walker.cpp
   src/change_applier.cpp
+  tests/ws/server.cpp
 )
 
 target_include_directories(app PRIVATE
@@ -64,4 +65,5 @@ target_link_libraries(app PRIVATE
     SDL2::SDL2
     httplib
     stduuid
+    uWebSockets
 )
