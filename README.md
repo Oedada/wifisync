@@ -14,3 +14,5 @@ uv run gui/gui/main.py
 - Finding devices in local network
 - Synchronization of the corresponding paths
 - Detecting conflicts
+
+The project is still in development, the code is provided for review only.
