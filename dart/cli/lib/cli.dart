@@ -6,19 +6,12 @@ typedef CliFunction = Function({
   required String description,
 });
 
-void log({
-  required Map<String, bool> flags,
-  required Map<String, String?> options,
-  required String description,
-}) {
-  print("Flags: $flags, Options: $options, description: $description");
-}
-void core_log({
-  required Map<String, bool> flags,
-  required Map<String, String?> options,
-  required String description,
-}) {
-  print("Core log");
+CliFunction create_cli_function(void Function() func) {
+  return ({
+    required Map<String, bool> flags,
+    required Map<String, String?> options,
+    required String description,
+  }) => func();
 }
 
 class CliItem {
@@ -73,7 +66,7 @@ class Parser {
       ap.addFlag(flag.name, abbr: flag.abbr);
     }
     for (final option in cmdNode.options) {
-      ap.addOption(option.name, abbr: option.abbr);
+      ap.addOption(option.name, abbr: option.abbr, mandatory: option.mandatory);
     }
     for (final cmd in cmdNode.subCommands) {
       ap.addCommand(cmd.command, _setArgParser(cmd, ArgParser()));
@@ -118,25 +111,4 @@ class Parser {
     }
     return _findFunction(subCmd, subCmdNode, results);
   }
-}
-
-CommandNode cde = CommandNode(
-  command: CommandNode.rootCmd,
-  flags: [CliOption(name: "help", abbr: "h")],
-  subCommands: [
-    CommandNode(
-      command: "core",
-      subCommands: [
-        CommandNode(command: "start", function: log),
-        CommandNode(command: "stop", function: log),
-      ],
-      function: core_log,
-    ),
-  ],
-  function: log,
-);
-
-void main(List<String> arguments) {
-  var pars = Parser(rootCmdNode: cde);
-  pars.processCommand(arguments)();
 }
