@@ -1,43 +1,47 @@
 import 'package:cli/cli.dart';
+import 'package:websockets/websockets.dart';
 
-CommandNode buildTree() {
+CommandNode buildTree(WS webs) {
   return CommandNode(
     command: CommandNode.rootCmd,
     description: "Wifisync CLI — управление синхронизацией файлов",
     flags: [CliOption(name: "help", abbr: "h")],
-    function: create_cli_function(({flags, options, description}) {
+    function: ({flags = const {}, options = const {}, description = ""}) {
       print("Wifisync CLI");
       print("Использование: cli <команда> [опции]");
-    }),
+    },
     subCommands: [
       // ── core ──────────────────────────────────────────────
       CommandNode(
         command: "core",
         description: "Управление core-демоном",
-        function: create_cli_function(({flags, options, description}) {
+        function: ({flags = const {}, options = const {}, description = ""}) {
           print("core");
-        }),
+        },
         subCommands: [
           CommandNode(
             command: "start",
             description: "Запустить WS-сервер, UDP broadcast",
-            function: create_cli_function(({flags, options, description}) {
-              print("core start");
-            }),
+            function:
+                ({flags = const {}, options = const {}, description = ""}) {
+                  print("core start");
+                },
           ),
           CommandNode(
             command: "stop",
             description: "Остановить core-демон",
-            function: create_cli_function(({flags, options, description}) {
-              print("core stop");
-            }),
+            function:
+                ({flags = const {}, options = const {}, description = ""}) {
+                  print("core stop");
+                },
           ),
           CommandNode(
             command: "status",
             description: "Статус: alive / connected / idle",
-            function: create_cli_function(({flags, options, description}) {
-              print("core status");
-            }),
+            function:
+                ({flags = const {}, options = const {}, description = ""}) {
+                  print("core status");
+                },
           ),
         ],
       ),
@@ -45,55 +49,121 @@ CommandNode buildTree() {
       CommandNode(
         command: "device",
         description: "Управление устройствами",
-        function: create_cli_function(({flags, options, description}) {
+        function: ({flags = const {}, options = const {}, description = ""}) {
           print("device");
-        }),
+        },
         subCommands: [
           CommandNode(
             command: "list",
             description: "Устройства в сети",
-            function: create_cli_function(({flags, options, description}) {
-              print("device list");
-            }),
+            function:
+                ({
+                  flags = const {},
+                  options = const {},
+                  description = "",
+                }) async {
+                  print(
+                    await webs.send(
+                      msg: ActionMsg(
+                        type: ActionMsg.requestType,
+                        action: "device.list",
+                        parameters: {},
+                      ),
+                    ),
+                  );
+                },
           ),
           CommandNode(
             command: "connect",
             description: "Подключиться к устройству",
             options: [CliOption(name: "uuid", abbr: "u", mandatory: true)],
-            function: create_cli_function(({flags, options, description}) {
-              print("device connect --uuid=${options["uuid"]}");
-            }),
+            function:
+                ({
+                  flags = const {},
+                  options = const {},
+                  description = "",
+                }) async {
+                  print(
+                    await webs.send(
+                      msg: ActionMsg(
+                        type: ActionMsg.commandType,
+                        action: "device.connect",
+                        parameters: {"uuid": "1234567890"},
+                      ),
+                    ),
+                  );
+                },
           ),
           CommandNode(
             command: "accept",
             description: "Принять входящее подключение",
             options: [CliOption(name: "uuid", abbr: "u", mandatory: true)],
-            function: create_cli_function(({flags, options, description}) {
-              print("device accept --uuid=${options["uuid"]}");
-            }),
+            function:
+                ({
+                  flags = const {},
+                  options = const {},
+                  description = "",
+                }) async {
+                  print(
+                    await webs.send(
+                      msg: ActionMsg(
+                        type: ActionMsg.commandType,
+                        action: "device.accept",
+                        parameters: {"uuid": "1234567890"},
+                      ),
+                    ),
+                  );
+                },
           ),
           CommandNode(
-            command: "reject",
+            command: "decline",
             description: "Отклонить входящее подключение",
             options: [CliOption(name: "uuid", abbr: "u", mandatory: true)],
-            function: create_cli_function(({flags, options, description}) {
-              print("device reject --uuid=${options["uuid"]}");
-            }),
+            function:
+                ({
+                  flags = const {},
+                  options = const {},
+                  description = "",
+                }) async {
+                  print(
+                    await webs.send(
+                      msg: ActionMsg(
+                        type: ActionMsg.commandType,
+                        action: "device.decline",
+                        parameters: {"uuid": "1234567890"},
+                      ),
+                    ),
+                  );
+                },
           ),
           CommandNode(
             command: "forget",
             description: "Забыть устройство",
             options: [CliOption(name: "uuid", abbr: "u", mandatory: true)],
-            function: create_cli_function(({flags, options, description}) {
-              print("device forget --uuid=${options["uuid"]}");
-            }),
+            function:
+                ({flags = const {}, options = const {}, description = ""}) {
+                  print("device forget --uuid=${options["uuid"]}");
+                },
           ),
           CommandNode(
             command: "know-list",
             description: "Список известных устройств из конфига",
-            function: create_cli_function(({flags, options, description}) {
-              print("device know-list");
-            }),
+            function:
+                ({
+                  flags = const {},
+                  options = const {},
+                  description = "",
+                }) async {
+                  print(
+                    await webs.send(
+                      msg: ActionMsg(
+                        type: ActionMsg.requestType,
+                        action: "device.know-list",
+                        parameters: {},
+                      ),
+                    ),
+                  );
+                },
           ),
         ],
       ),
@@ -101,9 +171,9 @@ CommandNode buildTree() {
       CommandNode(
         command: "path",
         description: "Управление путями синхронизации",
-        function: create_cli_function(({flags, options, description}) {
+        function: ({flags = const {}, options = const {}, description = ""}) {
           print("path");
-        }),
+        },
         subCommands: [
           CommandNode(
             command: "add",
@@ -113,54 +183,125 @@ CommandNode buildTree() {
               CliOption(name: "remote", abbr: "r", mandatory: true),
               CliOption(name: "device", abbr: "d", mandatory: true),
             ],
-            function: create_cli_function(({flags, options, description}) {
-              print("path add --local=${options["local"]} --remote=${options["remote"]} --device=${options["device"]}");
-            }),
+            function:
+                ({flags = const {}, options = const {}, description = ""}) async {
+                  print(
+                    await webs.send(
+                      msg: ActionMsg(
+                        type: ActionMsg.commandType,
+                        action: "path.add",
+                        parameters: options,
+                      ),
+                    ),
+                  );
+                },
           ),
           CommandNode(
-            command: "remove",
+            command: "rm",
             description: "Удалить путь из синхронизации",
             options: [CliOption(name: "local", abbr: "l", mandatory: true)],
-            function: create_cli_function(({flags, options, description}) {
-              print("path remove --local=${options["local"]}");
-            }),
+            function:
+                ({
+                  flags = const {},
+                  options = const {},
+                  description = "",
+                }) async {
+                  print(
+                    await webs.send(
+                      msg: ActionMsg(
+                        type: ActionMsg.commandType,
+                        action: "path.rm",
+                        parameters: options,
+                      ),
+                    ),
+                  );
+                },
           ),
           CommandNode(
             command: "list",
             description: "Список путей синхронизации",
-            function: create_cli_function(({flags, options, description}) {
-              print("path list");
-            }),
+            function:
+                ({
+                  flags = const {},
+                  options = const {},
+                  description = "",
+                }) async {
+                  print(
+                    await webs.send(
+                      msg: ActionMsg(
+                        type: ActionMsg.requestType,
+                        action: "path.list",
+                        parameters: {},
+                      ),
+                    ),
+                  );
+                },
           ),
           CommandNode(
             command: "ignore",
             description: "Управление игнорируемыми паттернами",
-            function: create_cli_function(({flags, options, description}) {
-              print("path ignore");
-            }),
+            function:
+                ({flags = const {}, options = const {}, description = ""}) {
+                  print("path ignore");
+                },
             subCommands: [
               CommandNode(
                 command: "add",
                 description: "Добавить паттерн в игнор",
-                options: [CliOption(name: "pattern", abbr: "p", mandatory: true)],
-                function: create_cli_function(({flags, options, description}) {
-                  print("path ignore add --pattern=${options["pattern"]}");
-                }),
+                options: [
+                  CliOption(name: "pattern", abbr: "p", mandatory: true),
+                ],
+                function:
+                    ({flags = const {}, options = const {}, description = ""}) {
+                      print(
+                        webs.send(
+                          msg: ActionMsg(
+                            type: ActionMsg.commandType,
+                            action: "path.ignore.add",
+                            parameters: options,
+                          ),
+                        ),
+                      );
+                    },
               ),
               CommandNode(
                 command: "remove",
                 description: "Удалить паттерн из игнора",
-                options: [CliOption(name: "pattern", abbr: "p", mandatory: true)],
-                function: create_cli_function(({flags, options, description}) {
-                  print("path ignore remove --pattern=${options["pattern"]}");
-                }),
+                options: [
+                  CliOption(name: "pattern", abbr: "p", mandatory: true),
+                ],
+                function:
+                    ({
+                      flags = const {},
+                      options = const {},
+                      description = "",
+                    }) async {
+                      print(
+                        await webs.send(
+                          msg: ActionMsg(
+                            type: ActionMsg.commandType,
+                            action: "path.ignore.rm",
+                            parameters: options,
+                          ),
+                        ),
+                      );
+                    },
               ),
               CommandNode(
                 command: "list",
                 description: "Список игнорируемых паттернов",
-                function: create_cli_function(({flags, options, description}) {
-                  print("path ignore list");
-                }),
+                function:
+                    ({flags = const {}, options = const {}, description = ""}) {
+                      print(
+                        webs.send(
+                          msg: ActionMsg(
+                            type: ActionMsg.requestType,
+                            action: "path.ignore.list",
+                            parameters: options,
+                          ),
+                        ),
+                      );
+                    },
               ),
             ],
           ),
@@ -170,38 +311,90 @@ CommandNode buildTree() {
       CommandNode(
         command: "sync",
         description: "Управление синхронизацией",
-        function: create_cli_function(({flags, options, description}) {
+        function: ({flags = const {}, options = const {}, description = ""}) {
           print("sync");
-        }),
+        },
         subCommands: [
           CommandNode(
             command: "start",
             description: "Запустить синхронизацию с устройством",
             options: [CliOption(name: "uuid", abbr: "u", mandatory: true)],
-            function: create_cli_function(({flags, options, description}) {
-              print("sync start --uuid=${options["uuid"]}");
-            }),
+            function:
+                ({
+                  flags = const {},
+                  options = const {},
+                  description = "",
+                }) async {
+                  print(
+                    await webs.send(
+                      msg: ActionMsg(
+                        type: ActionMsg.commandType,
+                        action: "sync.start",
+                        parameters: options,
+                      ),
+                    ),
+                  );
+                },
           ),
           CommandNode(
             command: "status",
             description: "Прогресс / текущий шаг синхронизации",
-            function: create_cli_function(({flags, options, description}) {
-              print("sync status");
-            }),
+            function:
+                ({
+                  flags = const {},
+                  options = const {},
+                  description = "",
+                }) async {
+                  print(
+                    await webs.send(
+                      msg: ActionMsg(
+                        type: ActionMsg.requestType,
+                        action: "sync.status",
+                        parameters: options,
+                      ),
+                    ),
+                  );
+                },
           ),
           CommandNode(
             command: "conflicts",
             description: "Список конфликтов",
-            function: create_cli_function(({flags, options, description}) {
-              print("sync conflicts");
-            }),
+            function:
+                ({
+                  flags = const {},
+                  options = const {},
+                  description = "",
+                }) async {
+                  print(
+                    await webs.send(
+                      msg: ActionMsg(
+                        type: ActionMsg.requestType,
+                        action: "sync.conflicts",
+                        parameters: options,
+                      ),
+                    ),
+                  );
+                },
           ),
           CommandNode(
             command: "cancel",
             description: "Прервать текущий sync",
-            function: create_cli_function(({flags, options, description}) {
-              print("sync cancel");
-            }),
+            function:
+                ({
+                  flags = const {},
+                  options = const {},
+                  description = "",
+                }) async {
+                  print(
+                    await webs.send(
+                      msg: ActionMsg(
+                        type: ActionMsg.commandType,
+                        action: "sync.cancel",
+                        parameters: options,
+                      ),
+                    ),
+                  );
+                },
           ),
         ],
       ),
@@ -209,8 +402,9 @@ CommandNode buildTree() {
   );
 }
 
-void main(List<String> arguments) {
-  var root = buildTree();
+Future<void> main(List<String> arguments) async {
+  var ws = await WS.connect(port: 9001);
+  var root = buildTree(ws);
   var pars = Parser(rootCmdNode: root);
-  pars.processCommand(arguments)();
+  await pars.processCommand(arguments)();
 }

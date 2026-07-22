@@ -1,18 +1,10 @@
 import 'package:args/args.dart';
 
 typedef CliFunction = Function({
-  required Map<String, bool> flags,
-  required Map<String, String?> options,
-  required String description,
+  Map<String, bool> flags,
+  Map<String, dynamic> options,
+  String description,
 });
-
-CliFunction create_cli_function(void Function() func) {
-  return ({
-    required Map<String, bool> flags,
-    required Map<String, String?> options,
-    required String description,
-  }) => func();
-}
 
 class CliItem {
   final String name;
@@ -85,12 +77,12 @@ class Parser {
     ArgResults results,
   ) {
     final Map<String, bool> flags = {};
-    final Map<String, String?> options = {};
+    final Map<String, dynamic> options = {};
     for (final flag in cmdNode.flags) {
-      flags[flag.name] = results[flag.name];
+      flags[flag.name] = cmd[flag.name];
     }
     for (final option in cmdNode.options) {
-      options[option.name] = results[option.name];
+      options[option.name] = cmd[option.name];
     }
     var subCmd = cmd.command;
     if (cmdNode.subCommands.isEmpty || subCmd == null) {

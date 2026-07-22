@@ -48,7 +48,7 @@ add_executable(app
   src/transport.cpp
   src/dif_walker.cpp
   src/change_applier.cpp
-  tests/ws/server.cpp
+  src/websocket.cpp
 )
 
 target_include_directories(app PRIVATE
