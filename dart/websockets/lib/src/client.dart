@@ -18,8 +18,12 @@ T checkField<T>(Json json, String key) {
 class InfoMsg {
   final String event;
   final Json parameters;
+  static const String type = "info";
 
   InfoMsg({required this.event, required this.parameters});
+
+  @override
+  String toString() => "InfoMsg(event: $event, params: $parameters)";
 
   factory fromJson(Json json) {
     return InfoMsg(
@@ -34,6 +38,9 @@ class RespMsg {
   final bool status;
   static const String type = "resp";
   RespMsg({required this.parameters, required this.status});
+
+  @override
+  String toString() => "RespMsg(ok: $status, params: $parameters)";
 
   factory fromJson(Json json) {
     return RespMsg(
@@ -62,6 +69,9 @@ class ActionMsg {
     json["parameters"] = parameters;
     return json;
   }
+
+  @override
+  String toString() => "ActionMsg($action, type: $type, params: $parameters)";
 
   factory fromJson(Json json) {
     final String type;
@@ -153,26 +163,46 @@ Future<void> main() async {
 
   // 1. connect
   var r1 = await ws.send(
-    msg: ActionMsg(type: "cmd", action: "device.connect", parameters: {"uuid": "abc-123"}),
+    msg: ActionMsg(
+      type: "cmd",
+      action: "device.connect",
+      parameters: {"uuid": "abc-123"},
+    ),
   );
   print("connect ok: ${r1.status} parameters: ${r1.parameters}");
 
   // 2. list
   var r2 = await ws.send(
-    msg: ActionMsg(type: ActionMsg.requestType, action: "device.list", parameters: {}),
+    msg: ActionMsg(
+      type: ActionMsg.requestType,
+      action: "device.list",
+      parameters: {},
+    ),
   );
   print("list ok: ${r2.status} devices: ${r2.parameters["devices"]}");
 
   // 3. error
   var r3 = await ws.send(
-    msg: ActionMsg(type: ActionMsg.commandType, action: "error.test", parameters: {}),
+    msg: ActionMsg(
+      type: ActionMsg.commandType,
+      action: "error.test",
+      parameters: {},
+    ),
   );
   print("error ok: ${r3.status}");
 
   // 4. concurrent
   var futures = [
-    ws.send(msg: ActionMsg(type: "req", action: "device.list", parameters: {})),
-    ws.send(msg: ActionMsg(type: "cmd", action: "device.connect", parameters: {"uuid": "xyz"})),
+    ws.send(
+      msg: ActionMsg(type: "req", action: "device.list", parameters: {}),
+    ),
+    ws.send(
+      msg: ActionMsg(
+        type: "cmd",
+        action: "device.connect",
+        parameters: {"uuid": "xyz"},
+      ),
+    ),
   ];
   var results = await Future.wait(futures);
   print("concurrent: ${results[0].status} ${results[1].status}");

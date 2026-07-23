@@ -30,25 +30,26 @@ add_compile_options(
     -pthread
 )
 
-file(GLOB SRCS src/*.cpp)
-
 add_executable(app 
-  src/broadcasts.cpp
-  src/difference.cpp
-  src/environment.cpp
-  src/files_opers.cpp
-  src/hash.cpp
-  src/init.cpp
-  src/http_server.cpp
-  src/server.cpp
-  src/TCPSocket.cpp
+  src/main.cpp
   src/threads.cpp
-  src/utils.cpp
-  src/dif_work.cpp
-  src/transport.cpp
-  src/dif_walker.cpp
-  src/change_applier.cpp
-  src/websocket.cpp
+  src/core/difference.cpp
+  src/core/dif_work.cpp
+  src/core/dif_walker.cpp
+  src/core/transport.cpp
+  src/core/change_applier.cpp
+  src/network/broadcasts.cpp
+  src/network/TCPSocket.cpp
+  src/network/http_server.cpp
+  src/network/server.cpp
+  src/network/websocket.cpp
+  src/crypto/ed25519.cpp
+  src/crypto/x25519.cpp
+  src/crypto/hash.cpp
+  src/fs/environment.cpp
+  src/fs/files_opers.cpp
+  src/util/init.cpp
+  src/util/utils.cpp
 )
 
 target_include_directories(app PRIVATE

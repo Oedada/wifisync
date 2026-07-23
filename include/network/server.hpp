@@ -1,0 +1,31 @@
+#pragma once
+
+#include "network/TCPSocket.hpp"
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <string>
+#include <sys/types.h>
+
+class Server{
+    public:
+        Server(const Server&) = delete;
+        Server& operator=(const Server&) = delete;
+        const int server_port;
+        sockaddr_in client_addr;
+        std::string client_ip;
+        int client_port;
+
+        Server(const int port);
+        bool is_ready_to_accept();
+        TCPSocket accept_conn();
+        ~Server();
+
+    private:
+        void bind_sock();
+        void listen_addr();
+        int server_fd;
+        sockaddr_in server_addr{};
+        int client_fd = -1;
+        socklen_t client_addr_len = sizeof(client_addr);
+    
+};

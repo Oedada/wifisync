@@ -1,20 +1,20 @@
-#include <iostream>
-#include <fstream>
+#include "core/difference.hpp"
+#include "crypto/ed25519.hpp"
+#include "crypto/hash.hpp"
+#include "crypto/x25519.hpp"
+#include "fs/files_opers.hpp"
+#include "network/broadcast.hpp"
+#include "network/server.hpp"
+#include "network/TCPSocket.hpp"
+#include "util/constants.hpp"
+#include "util/init.hpp"
 #include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <netinet/in.h>
 #include <openssl/rand.h>
 #include <sys/socket.h>
 #include <vector>
-#include "init.hpp"
-#include "constants.hpp"
-#include "hash.hpp"
-#include "files_opers.hpp"
-#include "server.hpp"
-#include "x25519.hpp"
-#include "ed25519.hpp"
-#include "TCPSocket.hpp"
-#include "difference.hpp"
-#include "broadcast.hpp"
 
 using json = nlohmann::json;
 

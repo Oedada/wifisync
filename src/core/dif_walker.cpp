@@ -1,0 +1,111 @@
+#include "core/change_applier.hpp"
+#include "core/dif_walker.hpp"
+#include "core/dif_work.hpp"
+#include "core/difference.hpp"
+#include "core/transport.hpp"
+#include "fs/environment.hpp"
+#include "network/server.hpp"
+#include "network/TCPSocket.hpp"
+#include "util/constants.hpp"
+#include "util/utils.hpp"
+#include <arpa/inet.h>
+#include <filesystem>
+#include <netinet/in.h>
+#include <stdexcept>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <variant>
+
+DifWalker::DifWalker(json d) : dif(d){}
+
+void DifWalker::walk(const std::function<void(SUnit)>& emit){
+    for(auto [key, val] : dif.items()){
+        if(!dif.at(key).contains(constants::JSON_FIELD_NAME_OTHER_PATH)){
+            continue;
+        }
+        if(dif.at(key).at(constants::JSON_FIELD_NAME_OTHER_PATH) == "/None"){
+            continue;
+        }
+        walk_node(dif.at(key), dif.at(key).at(constants::JSON_FIELD_NAME_OTHER_PATH), key, emit);
+    }
+}
+
+void walk_added_directory_in_fs(fs::path cur_path, const std::function<void(SUnit)>& emit){
+    for(const auto &p : fs::directory_iterator(cur_path)){
+        SUnit sunit{};
+        sunit.name = p.path().filename();
+        if(p.is_directory()){
+            sunit.ut = UnitType::Directory;
+            uint64_t count_sp = 0;
+            for([[maybe_unused]]auto const& sp : fs::directory_iterator(p)){
+                count_sp++;
+            }
+            sunit.data = DirData{count_sp};
+        }
+        else if(p.is_regular_file()){
+            sunit.ut = UnitType::File;
+            sunit.data = FileData{p.path()};
+        }
+        else{
+            throw std::runtime_error("Unknow type file");
+        }
+        sunit.mt = ModifyType::Added;
+        emit(sunit);
+        if(sunit.ut == UnitType::Directory){
+            walk_added_directory_in_fs(cur_path / p.path().filename(), emit);
+        }
+    }
+}
+
+void DifWalker::walk_node(const json &node,const std::string &node_name, const fs::path &cur_path, const std::function<void(SUnit)>& emit){
+    SUnit sunit = json_to_sunit(node, cur_path, node_name);
+    emit(sunit);
+    if(sunit.ut == UnitType::Directory){
+        if(sunit.mt == ModifyType::Modified){
+            for(const auto &[key, val] : node.items()){
+                if(key != constants::JSON_FIELD_NAME_OTHER_PATH && key != constants::JSON_FIELD_NAME_TYPE){
+                    if(val.is_object()){
+                        walk_node(val, key, cur_path / key, emit);
+                    }
+                }
+            }
+        }
+        else if(sunit.mt == ModifyType::Added){
+            walk_added_directory_in_fs(cur_path, emit);
+        }
+    }
+}
+
+SUnit DifWalker::json_to_sunit(const json &node, const fs::path &cur_path, const std::string &name){
+    SUnit u;
+    u.name = name;
+    if(node.at(constants::JSON_FIELD_NAME_TYPE) == constants::UNIT_TYPE_DIR){
+        u.ut = UnitType::Directory;
+    } else if(node.at(constants::JSON_FIELD_NAME_TYPE) == constants::UNIT_TYPE_FILE){
+        u.ut = UnitType::File;
+    } else if(node.at(constants::JSON_FIELD_NAME_TYPE) == constants::UNIT_TYPE_EMPTY_DIR){
+        u.ut = UnitType::Directory;
+        u.mt = string_to_modify[node.at(constants::JSON_FIELD_NAME_MOD_TYPE)];
+        u.data = DirData{0};
+        return u;
+    } else{
+        std::cerr << node.at(constants::JSON_FIELD_NAME_TYPE);
+        throw std::runtime_error(std::string("This isn't file or directory: ") + std::string(cur_path));
+    }
+    if(node.contains(constants::JSON_FIELD_NAME_MOD_TYPE)){
+        u.mt = string_to_modify[node.at(constants::JSON_FIELD_NAME_MOD_TYPE)];
+    }
+    else{
+        throw std::runtime_error(cur_path);
+    }
+    if(u.ut == UnitType::Directory){
+        u.data = DirData{count_subelements(node)};
+        if(u.mt == ModifyType::Added){
+            u.data = DirData{(uint64_t)std::distance(fs::directory_iterator(cur_path), fs::directory_iterator{})};
+        }
+    }
+    else{
+        u.data = FileData{cur_path};
+    }
+    return u;
+}

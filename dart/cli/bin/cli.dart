@@ -184,7 +184,11 @@ CommandNode buildTree(WS webs) {
               CliOption(name: "device", abbr: "d", mandatory: true),
             ],
             function:
-                ({flags = const {}, options = const {}, description = ""}) async {
+                ({
+                  flags = const {},
+                  options = const {},
+                  description = "",
+                }) async {
                   print(
                     await webs.send(
                       msg: ActionMsg(
@@ -403,8 +407,9 @@ CommandNode buildTree(WS webs) {
 }
 
 Future<void> main(List<String> arguments) async {
-  var ws = await WS.connect(port: 9001);
+  var ws = await WS.connect(port: 9001, onInfo: (InfoMsg msg) => print(msg));
   var root = buildTree(ws);
   var pars = Parser(rootCmdNode: root);
   await pars.processCommand(arguments)();
+  // await ws.close();
 }

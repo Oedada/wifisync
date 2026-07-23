@@ -1,27 +1,28 @@
-#include "TCPSocket.hpp"
-#include "broadcast.hpp"
-#include "constants.hpp"
-#include "x25519.hpp"
-#include "ed25519.hpp"
-#include "http_server.hpp"
-#include "transport.hpp"
-#include "dif_work.hpp"
-#include "environment.hpp"
-#include "utils.hpp"
-#include "change_applier.hpp"
-#include "dif_walker.hpp"
-#include "init.hpp"
+#include "core/change_applier.hpp"
+#include "core/dif_walker.hpp"
+#include "core/dif_work.hpp"
+#include "core/transport.hpp"
+#include "crypto/ed25519.hpp"
+#include "crypto/x25519.hpp"
+#include "fs/environment.hpp"
+#include "network/broadcast.hpp"
+#include "network/http_server.hpp"
+#include "network/TCPSocket.hpp"
+#include "util/constants.hpp"
+#include "util/init.hpp"
+#include "util/utils.hpp"
 #include <cstddef>
-#include <sys/prctl.h>
-#include <signal.h>
 #include <cstdint>
 #include <exception>
+#include <nlohmann/json.hpp>
 #include <openssl/rand.h>
+#include <signal.h>
 #include <string>
+#include <sys/prctl.h>
+#include <thread>
 #include <tuple>
 #include <unistd.h>
-#include <thread>
-#include <nlohmann/json.hpp>
+
 enum class GetConnectionType{
     Accept,
     Connect
