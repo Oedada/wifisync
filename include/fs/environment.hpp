@@ -1,16 +1,10 @@
 #pragma once
 
-#include <filesystem>
-#include <nlohmann/json.hpp>
+#include <fstream>
 #include <SDL2/SDL.h>
+#include <string_view>
 
-using json = nlohmann::json;
-namespace fs = std::filesystem;
-
-namespace env{
-    // paths
-    const fs::path get_data_path();
-    const fs::path get_data_path(std::string sub_name);
-    const std::string get_uuid();
-    const std::string get_name();
+namespace FileAccess {
+    std::ifstream get_fin(std::string_view path);
+    std::ofstream get_fout(std::string_view path);
 }

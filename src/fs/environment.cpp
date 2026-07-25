@@ -1,55 +1,29 @@
 #include "fs/environment.hpp"
-#include "util/constants.hpp"
+#include <cstddef>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
-#include <nlohmann/json.hpp>
-#include <SDL2/SDL.h>
-#include <stdexcept>
 
-using json = nlohmann::json;
 namespace fs = std::filesystem;
 
-    const fs::path env::get_data_path(){
-        static fs::path root_data = []{
-            char* char_path = SDL_GetPrefPath(constants::author_name.c_str(), constants::project_name.c_str());
-            if(!char_path){
-                throw std::runtime_error("Can't get data path");
-            }
-            fs::path path = char_path;
-            SDL_free(char_path);
-            return path;
-        }();
-        return root_data;
-    }
-    const fs::path env::get_data_path(std::string sub_name){
-        static fs::path root_data = []{
-            char* char_path = SDL_GetPrefPath(constants::author_name.c_str(), constants::project_name.c_str());
-            if(!char_path){
-                throw std::runtime_error("Can't get data path");
-            }
-            fs::path path = char_path;
-            SDL_free(char_path);
-            return path;
-        }();
-        if(!fs::path(sub_name).has_extension()){
-            fs::create_directory(root_data / sub_name);
+fs::path get_and_create_if_not_exists_base_path() {
+    static fs::path base_path = [] {
+        fs::path base_path;
+        char *data_home = getenv("XDG_DATA_HOME");
+        if (data_home == NULL) {
+            base_path = fs::path(getenv("HOME")) / "/.local/share/wifisync/";
+        } else {
+            base_path = fs::path(data_home) / "/wifisync/";
         }
-        return root_data / sub_name;
-    }
-    const std::string env::get_uuid(){
-        std::ifstream fin(get_data_path(constants::UUID_FILE));
-        if(!fin){
-            std::cerr << "aaaaaaaaaa";
-        }
-        std::stringstream buf;
-        buf << fin.rdbuf();
-        return buf.str();
-    }
-    const std::string env::get_name(){
-        std::ifstream fin(get_data_path(constants::CONFIG_FILE));
-        json cfg;
-        fin >> cfg;
-        return cfg.at("name").get<std::string>();
-    }
+        fs::create_directory(base_path);
+        return base_path;
+    }();
+    return base_path;
+}
+std::ifstream FileAccess::get_fin(std::string_view path) {
+    return std::ifstream(get_and_create_if_not_exists_base_path() / path);
+}
 
+std::ofstream FileAccess::get_fout(std::string_view path) {
+    return std::ofstream(get_and_create_if_not_exists_base_path() / path);
+}

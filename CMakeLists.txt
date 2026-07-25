@@ -50,6 +50,7 @@ add_executable(app
   src/fs/files_opers.cpp
   src/util/init.cpp
   src/util/utils.cpp
+  src/fs/data_manager.cpp
 )
 
 target_include_directories(app PRIVATE
@@ -58,12 +59,9 @@ target_include_directories(app PRIVATE
 
 find_package(OpenSSL REQUIRED)
 
-find_package(SDL2 REQUIRED)
-
 target_link_libraries(app PRIVATE
     OpenSSL::SSL
     OpenSSL::Crypto
-    SDL2::SDL2
     httplib
     stduuid
     uWebSockets
