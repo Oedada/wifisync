@@ -44,7 +44,25 @@ namespace constants{
     constexpr int COUNT_FIND_DEVICE = 10;
 
     //paths
-    inline std::string KEY_DIR = "key";
+    struct data {
+        std::string current_snapshot;
+        std::string last_snapshot;
+        std::string difference;
+        std::string devices;
+    };
+    struct paths{
+        std::string config;
+        data data;
+    };
+    const paths Paths{
+        .config = "config.json",
+        .data = {
+            .current_snapshot = "current_snapshot.json",
+            .last_snapshot = "last_snapshot.json",
+            .difference = "difference.json",
+            .devices = "devices.json"
+        }
+    };
     inline std::string UUID_FILE = "uuid.uuid";
     inline std::string CONFIG_FILE = "config.json";
     inline std::string DEVICES_FILE = "devices.json";
