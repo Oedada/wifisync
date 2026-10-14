@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fs/data_manager.hpp"
 #include "network/TCPSocket.hpp"
 #include "util/constants.hpp"
 #include <arpa/inet.h>
@@ -44,6 +45,7 @@ class UdpBroadcast{
         
         ~UdpBroadcast();
         private:
+            DataManager dm;
             //messages
             std::string ConnectRequest;
             std::string ConnectResponse;

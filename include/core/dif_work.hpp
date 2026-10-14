@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fs/data_manager.hpp"
 #include <filesystem>
 #include <vector>
 
@@ -7,6 +8,7 @@ namespace fs = std::filesystem;
 
 class DifWork{
     private:
+        DataManager dm = DataManager();
         std::string own_name;
         std::string own_uuid;
         std::vector<std::string> detecting_paths;

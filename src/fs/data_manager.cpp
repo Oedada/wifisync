@@ -10,8 +10,15 @@ namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 DataManager::DataManager() {
-    config = json::parse(FileAccess::get_fin(constants::paths::config));
+    try {
+        config = json::parse(FileAccess::get_fin(constants::paths::config));
+    } catch (const json::parse_error) {
+        config = Config();
+    } catch (fs::filesystem_error) {
+        config = Config();
+    }
 }
+
 void DataManager::save_config() {
     json out = config;
     std::ofstream fout = FileAccess::get_fout(constants::paths::config);
@@ -45,6 +52,8 @@ void DataManager::set_name(const std::string &name) {
     save_config();
 }
 
+std::string DataManager::get_name() const { return config.name; }
+
 void DataManager::set_uuid(const std::string &uuid) {
     config.uuid = uuid;
     save_config();
@@ -53,7 +62,14 @@ void DataManager::set_uuid(const std::string &uuid) {
 std::string DataManager::get_uuid() const { return config.uuid; }
 
 DeviceManager::DeviceManager() {
-    devices = json::parse(FileAccess::get_fin(constants::paths::data::devices));
+    try {
+        devices =
+            json::parse(FileAccess::get_fin(constants::paths::data::devices));
+    } catch (const json::parse_error) {
+        devices = {};
+    } catch (fs::filesystem_error) {
+        devices = {};
+    }
 }
 
 void DeviceManager::save_devices() {
@@ -67,6 +83,18 @@ void DeviceManager::add_device(const std::string &uuid,
     d.name = name;
     devices[uuid] = d;
     save_devices();
+}
+
+Device DeviceManager::get_device(const std::string &uuid){
+    return devices[uuid];
+}
+
+bool DeviceManager::is_first(const std::string &uuid){
+    return devices[uuid].is_first;
+}
+
+void DeviceManager::set_is_first(const std::string &uuid, const bool is_first){
+    devices[uuid].is_first = is_first;
 }
 
 void DeviceManager::rm_device(const std::string &uuid) {

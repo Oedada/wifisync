@@ -1,4 +1,4 @@
-#include "fs/environment.hpp"
+#include "fs/data_manager.hpp"
 #include "network/broadcast.hpp"
 #include "network/server.hpp"
 #include "network/TCPSocket.hpp"
@@ -24,7 +24,7 @@ UdpBroadcast::UdpBroadcast(int p) : broadcast_port(p){
     if(broadcast_sock < 0){
         throw std::runtime_error("Can't create socket");
     }
-    std::string uuid_and_name = env::get_uuid() + ":" + env::get_name();
+    std::string uuid_and_name = dm.get_uuid() + ":" + dm.get_name();
     BroadcastMsg = constants::StaticBroadcastMessage + uuid_and_name;
     ConnectRequest = constants::StaticRequestConnect + uuid_and_name;
     ConnectResponse = constants::StaticResponseConnect + uuid_and_name;
@@ -164,7 +164,7 @@ std::pair<std::string, std::string> UdpBroadcast::parse_msg(const char *buf, con
 
 std::pair<bool, std::string> UdpBroadcast::add_to_found_devices_if_not_own_uuid(char* buf, size_t size){
     auto [uuid, name] = parse_msg(buf, size);
-    if(uuid != env::get_uuid()){
+    if(uuid != dm.get_uuid()){
         if(!found_devices.contains(uuid)){
             DeviceData dd;
             dd.addr = tmp_recv_addr;

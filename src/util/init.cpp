@@ -1,48 +1,31 @@
-#include "fs/environment.hpp"
-#include "util/constants.hpp"
 #include "util/init.hpp"
-#include "util/utils.hpp"
+#include "fs/data_manager.hpp"
 #include "uuid.h"
-#include <filesystem>
 #include <fstream>
 #include <random>
 
-void create_file_structure(){
-    fs::path root_path = env::get_data_path();
-    logmsg(root_path);
-    if(!fs::exists(root_path / constants::DEVICES_FILE)){
-        write_json(root_path / constants::DEVICES_FILE, {});
-    }
-    if(!fs::exists(root_path / constants::CONFIG_FILE)){
-        json cfg;
-        cfg["name"] = "tmp";
-        cfg["tmp_name"] = true;
-        write_json(root_path / constants::CONFIG_FILE, cfg);
-    }
-    auto data_dir = env::get_data_path(constants::DATA_DIR);
-    if(!fs::exists(data_dir / constants::DETECTING_UNITS_FILENAME)){
-        logmsg(data_dir / constants::DETECTING_UNITS_FILENAME);
-        std::ofstream fout(data_dir / constants::DETECTING_UNITS_FILENAME);
-    }
-    if(!fs::exists(data_dir / constants::IGNORING_UNITS_FILENAME)){
-        logmsg(data_dir / constants::IGNORING_UNITS_FILENAME);
-        std::ofstream fout(data_dir / constants::IGNORING_UNITS_FILENAME);
-    }
-}
+using json = nlohmann::json;
 
-void calculate_and_write_uuid(){
-    fs::path file_path = env::get_data_path(constants::UUID_FILE);
-    if(!fs::exists(file_path)){
-        std::ofstream fout(file_path);
+void calculate_and_set_uuid(DataManager dm) {
+    if (dm.get_uuid() == "") {
         std::mt19937 rng{std::random_device{}()};
-        uuids::uuid_random_generator gen{ rng };
+        uuids::uuid_random_generator gen{rng};
         uuids::uuid id = gen();
-        fout << uuids::to_string(id);
-        fout.close();
+        dm.set_uuid(uuids::to_string(id));
     }
 }
 
-void init(){
-    create_file_structure();
-    calculate_and_write_uuid();
+void get_and_set_name(DataManager dm) {
+    if (dm.get_name() == "") {
+        std::ifstream fin("/etc/hostname", std::ios::in);
+        std::string name;
+        std::getline(fin, name);
+        dm.set_name(name);
+    }
+}
+
+void init() {
+    DataManager dm;
+    calculate_and_set_uuid(dm);
+    get_and_set_name(dm);
 }

@@ -24,7 +24,8 @@ struct Config {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Config, uuid, name, paths)
 
 struct Device {
-    std::string name;
+    std::string name = "";
+    bool is_first = true;
     std::map<std::string, std::string> paths_pairs = {};
 };
 
@@ -38,9 +39,13 @@ class DeviceManager {
   public:
     DeviceManager();
     void add_device(const std::string &uuid, const std::string &name);
+    Device get_device(const std::string &uuid);
     int set_path_pair_to_device(const std::string &uuid,
                                 const fs::path &own_path,
                                 const fs::path &other_path);
+    bool is_first(const std::string &uuid);
+    void set_is_first(const std::string &uuid, const bool is_first);
+
     void rm_device(const std::string &uuid);
     int rm_path_pair_from_device(const std::string &uuid,
                                  const fs::path &own_path);
@@ -57,6 +62,7 @@ class DataManager {
     DeviceManager devices = DeviceManager();
     DataManager();
     void set_name(const std::string &name);
+    std::string get_name() const;
     void set_uuid(const std::string &uuid);
     std::string get_uuid() const;
     void add_watch(const fs::path &path);
