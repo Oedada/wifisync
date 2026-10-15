@@ -76,7 +76,7 @@ void full_sync(TCPSocket sock, bool is_server, std::string uuid){
     DifWork difwork(uuid);
     difwork.shift_snapshots();
     difwork.calculate_dif();
-    json dif = read_json(env::get_data_path(constants::DATA_DIR) / constants::DIFFERENCE_FILENAME, false);
+    json dif = FileAccess::read_json(constants::paths::data::difference);
     DifWalker dw(dif);
     st.set(3);
     logmsg("Starting synchronization...");

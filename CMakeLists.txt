@@ -31,7 +31,6 @@ add_compile_options(
 )
 
 add_executable(app 
-  src/main.cpp
   src/threads.cpp
   src/core/difference.cpp
   src/core/dif_work.cpp
@@ -47,7 +46,7 @@ add_executable(app
   src/crypto/x25519.cpp
   src/crypto/hash.cpp
   src/fs/environment.cpp
-  src/fs/files_opers.cpp
+  src/fs/snapshot.cpp
   src/util/init.cpp
   src/util/utils.cpp
   src/fs/data_manager.cpp

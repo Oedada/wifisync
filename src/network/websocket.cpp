@@ -5,7 +5,6 @@
 #include "util/queue.hpp"
 #include "util/utils.hpp"
 #include <App.h>
-#include <SDL_video.h>
 #include <cstdint>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -108,18 +107,18 @@ void ActionMsg::print() {
 
     Bridge::~Bridge() { action_messages.close(); }
 
-int main() {
-    auto bridge = Bridge(9001);
-    std::thread t1 = std::thread([&bridge] {
-        auto msg = bridge.recieve_action_msg();
-        if (msg.has_value()) {
-            ActionMsg rmsg = msg.value();
-            rmsg.print();
-            RespMsg resp({{"lol", "kek"}}, true, rmsg.id);
-            bridge.send_resp(resp);
-            bridge.send_info(InfoMsg("info.event", {{"lol", "kek"}}));
-        }
-    });
-    bridge.run();
-    t1.join();
-}
+// int main() {
+//     auto bridge = Bridge(9001);
+//     std::thread t1 = std::thread([&bridge] {
+//         auto msg = bridge.recieve_action_msg();
+//         if (msg.has_value()) {
+//             ActionMsg rmsg = msg.value();
+//             rmsg.print();
+//             RespMsg resp({{"lol", "kek"}}, true, rmsg.id);
+//             bridge.send_resp(resp);
+//             bridge.send_info(InfoMsg("info.event", {{"lol", "kek"}}));
+//         }
+//     });
+//     bridge.run();
+//     t1.join();
+// }

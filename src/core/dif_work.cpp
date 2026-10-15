@@ -4,9 +4,9 @@
 #include "fs/environment.hpp"
 #include "fs/snapshot.hpp"
 #include "util/constants.hpp"
-#include "util/utils.hpp"
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <string_view>
 
 namespace fs = std::filesystem;

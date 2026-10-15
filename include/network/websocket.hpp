@@ -3,7 +3,6 @@
 #include "WebSocketProtocol.h"
 #include "util/queue.hpp"
 #include <App.h>
-#include <SDL_video.h>
 #include <cstdint>
 #include <nlohmann/json.hpp>
 #include <optional>
