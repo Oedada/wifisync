@@ -24,9 +24,7 @@ UdpBroadcast::UdpBroadcast(int p) : broadcast_port(p) {
     if (broadcast_sock < 0) {
         throw std::runtime_error("Can't create socket");
     }
-    std::string uuid_and_name = dm.get_uuid() + ":" + dm.get_name();
     BroadcastMsg = constants::StaticBroadcastMessage + uuid_and_name;
-    ConnectRequest = constants::StaticRequestConnect + uuid_and_name;
     ConnectResponse = constants::StaticResponseConnect + uuid_and_name;
     // get own addr and broadcast addr
     if (!get_own_and_brcast_addr(own_addr, broadcast_addr)) {
@@ -52,75 +50,8 @@ UdpBroadcast::UdpBroadcast(int p) : broadcast_port(p) {
                sizeof(enable));
 }
 
-bool UdpBroadcast::set_request_cmd(ResponseCmd cmd) {
-    switch (cmd) {
-    case ResponseCmd::Accept:
-    case ResponseCmd::Deny:
-        if (response_connection.state == ResponseState::Received) {
-            response_connection.cmd = cmd;
-            return true;
-        }
-        return false;
-    case ResponseCmd::Cancel:
-        if (response_connection.state == ResponseState::Connecting) {
-            response_connection.cmd = cmd;
-            return true;
-        }
-        return false;
-    case ResponseCmd::Disconnect:
-        if (response_connection.state == ResponseState::Connected) {
-            response_connection.cmd = cmd;
-            return true;
-        }
-        return false;
-    case ResponseCmd::Pass:
-        if (response_connection.state == ResponseState::Error ||
-            response_connection.state == ResponseState::Denied) {
-            response_connection.cmd = cmd;
-            return true;
-        }
-        return false;
-    }
-}
 
-bool UdpBroadcast::set_request_cmd(RequestCmd cmd) {
-    switch (cmd) {
-    case RequestCmd::Connect:
-        if (request_connection.state == RequestState::Pass) {
-            request_connection.cmd = cmd;
-            return true;
-        }
-        return false;
-    case RequestCmd::Disconnect:
-        if (request_connection.state == RequestState::Connected) {
-            request_connection.cmd = cmd;
-            return true;
-        }
-        return false;
-    case RequestCmd::Cancel:
-        if (request_connection.state == RequestState::Connected) {
-            request_connection.cmd = cmd;
-            return true;
-        }
-        return false;
-    case RequestCmd::Pass:
-        if (request_connection.state == RequestState::Denied ||
-            request_connection.state == RequestState::Error) {
-            request_connection.cmd = cmd;
-            return true;
-        }
-        return false;
-    }
-}
 
-void UdpBroadcast::cycle() {
-    while (true) {
-        if (request_connection.cmd == RequestCmd::Connect) {
-            // коннектимся
-            request_connection.state = RequestState::Connecting;
-        }
-    }
-}
 
 void UdpBroadcast::read_received_data() {
     if (is_ready_to_recv()) {

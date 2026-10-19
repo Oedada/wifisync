@@ -13,32 +13,6 @@
 #include <unistd.h>
 #include <utility>
 
-enum class ResponseState {
-    Pass,
-    Received,
-    Connecting,
-    Connected,
-    Error,
-    Denied
-};
-
-enum class ResponseCmd { Pass, Accept, Deny, Disconnect, Cancel };
-
-struct Response {
-    ResponseCmd cmd;
-    ResponseState state;
-    std::string uuid;
-};
-
-enum class RequestState { Pass, Connecting, Connected, Denied, Error };
-
-enum class RequestCmd { Pass, Connect, Disconnect, Cancel };
-
-struct Request {
-    RequestCmd cmd;
-    RequestState state;
-    std::string uuid;
-};
 
 enum class Message { Broadcast, ConnectRequest, ConnectResponse };
 
@@ -64,16 +38,12 @@ class UdpBroadcast {
     void read_received_data();
     sockaddr_in get_broadcast_addr();
     std::map<std::string, DeviceData> get_found_devices();
-    bool set_request_cmd(ResponseCmd cmd);
-    bool set_request_cmd(RequestCmd cmd);
     void set_broadcast(bool is_working);
 
     ~UdpBroadcast();
 
   private:
     DataManager dm;
-    Request request_connection;
-    Response response_connection;
     // messages
     std::string ConnectRequest;
     std::string ConnectResponse;

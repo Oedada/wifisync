@@ -52,3 +52,4 @@ class TCPSocket{
 };
 
 TCPSocket client_connect(sockaddr_in addr);
+sockaddr_in addr_from_ip_and_port(std::string ip, int port);

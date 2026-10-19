@@ -207,3 +207,16 @@ TCPSocket client_connect(sockaddr_in addr){
     }
     return TCPSocket(client_sock);
 }
+
+sockaddr_in addr_from_ip_and_port(std::string ip, int port){
+    sockaddr_in addr{};
+    int res = inet_pton(AF_INET, ip.c_str(), &addr.sin_addr.s_addr);
+    if(res == 0){
+        throw std::runtime_error("Ip address isn't correct");
+    } else if (res != 1) {
+        throw std::runtime_error("Error while convert ip addr");
+    }
+    addr.sin_port = htons(port);
+    addr.sin_family = AF_INET;
+    return addr;
+}
