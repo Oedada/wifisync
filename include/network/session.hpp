@@ -1,50 +1,42 @@
 #include "fs/data_manager.hpp"
+#include "network/TCPSocket.hpp"
 #include <string>
 #include <variant>
 
-enum class ResponseState {
-    Pass,
-    Received,
-    Connecting,
+enum class State {
+    ReceivedRequest,
+    SendingRequest,
+    WaitAnswer,
     Connected,
+    Denied,
     Error,
-    Denied
+    Closed
 };
 
-enum class ResponseCmdType { Pass, Accept, Deny, Disconnect, Cancel };
-struct ResponseCmd {
-    ResponseCmdType type;
+enum class Cmd {
+    Idle,
+    Accept,
+    Deny,
+    Disconnect
 };
 
-struct Response {
-    ResponseCmd cmd;
-    ResponseState state;
-};
-
-enum class RequestState { Pass, Connecting, WaitAns, Connected, Denied, Error };
-
-enum class RequestCmdType { Pass, Connect, Disconnect, Cancel };
-
-struct RequestCmd {
-    RequestCmdType type;
-    std::variant<std::pair<std::string, int>, std::monostate> data;
-};
-
-struct Request {
-    RequestCmd cmd;
-    RequestState state;
-};
+enum class Direction {
+    Incoming,
+    Outgoing
+}
 
 class Session{
     private:
         DataManager dm;
-        Request req_conn;
-        Response resp_conn;
+        TCPSocket sock;
+        State state;
+        Cmd command;
+        Direction dir;
         std::string ConnectRequestHello;
         std::string ConnectResponseHello;
         void read_received_data();
     public:
-        Session();
+        Session(TCPSocket s, Direction dir);
         bool set_request_cmd(RequestCmd cmd);
         bool set_response_cmd(ResponseCmd cmd);
         void cycle();

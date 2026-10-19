@@ -1,81 +1,18 @@
 #include "network/session.hpp"
 #include "network/TCPSocket.hpp"
-#include "network/broadcast.hpp"
 #include "util/constants.hpp"
 #include "util/utils.hpp"
 #include <stdexcept>
 
-Session::Session() {
+Session::Session(TCPSocket s, Direction dir) : sock(std::move(s)), dir(dir) {
+    if (dir == Direction::Incoming) {
+        state = State::ReceivedRequest;
+    } else {
+        state = State::SendingRequest;
+    }
     std::string uuid_and_name = dm.get_uuid() + ":" + dm.get_name();
     ConnectRequestHello = constants::StaticRequestConnect + uuid_and_name;
     ConnectResponseHello = constants::StaticResponseConnect + uuid_and_name;
-}
-
-bool Session::set_response_cmd(ResponseCmd cmd) {
-    switch (cmd.type) {
-    case ResponseCmdType::Accept:
-    case ResponseCmdType::Deny:
-        if (resp_conn.state == ResponseState::Received &&
-            req_conn.state != RequestState::Connected &&
-            req_conn.state != RequestState::Connecting &&
-            req_conn.state != RequestState::WaitAns) {
-            resp_conn.cmd = cmd;
-            return true;
-        }
-        return false;
-    case ResponseCmdType::Cancel:
-        if (resp_conn.state == ResponseState::Connecting) {
-            resp_conn.cmd = cmd;
-            return true;
-        }
-        return false;
-    case ResponseCmdType::Disconnect:
-        if (resp_conn.state == ResponseState::Connected) {
-            resp_conn.cmd = cmd;
-            return true;
-        }
-        return false;
-    case ResponseCmdType::Pass:
-        if (resp_conn.state == ResponseState::Error ||
-            resp_conn.state == ResponseState::Denied) {
-            resp_conn.cmd = cmd;
-            return true;
-        }
-        return false;
-    }
-}
-
-bool Session::set_request_cmd(RequestCmd cmd) {
-    switch (cmd.type) {
-    case RequestCmdType::Connect:
-        if (req_conn.state == RequestState::Pass &&
-            resp_conn.state != ResponseState::Connected &&
-            resp_conn.state != ResponseState::Connecting &&
-            resp_conn.state != ResponseState::Received) {
-            req_conn.cmd = cmd;
-            return true;
-        }
-        return false;
-    case RequestCmdType::Disconnect:
-        if (req_conn.state == RequestState::Connected) {
-            req_conn.cmd = cmd;
-            return true;
-        }
-        return false;
-    case RequestCmdType::Cancel:
-        if (req_conn.state == RequestState::Connected) {
-            req_conn.cmd = cmd;
-            return true;
-        }
-        return false;
-    case RequestCmdType::Pass:
-        if (req_conn.state == RequestState::Denied ||
-            req_conn.state == RequestState::Error) {
-            req_conn.cmd = cmd;
-            return true;
-        }
-        return false;
-    }
 }
 
 void Session::read_received_data() {
@@ -97,22 +34,34 @@ void Session::read_received_data() {
 }
 
 void Session::cycle() {
-    switch (req_conn.cmd.type) {
-    case RequestCmdType::Connect:
-        if (req_conn.state == RequestState::Pass) {
-            req_conn.state = RequestState::Connecting;
-            auto [ip, port] =
-                std::get<std::pair<std::string, int>>(req_conn.cmd.data);
-            try {
-                auto sock = client_connect(addr_from_ip_and_port(ip, port));
-                sock.send(ConnectRequestHello.data());
-                req_conn.state = RequestState::WaitAns;
-            } catch (std::runtime_error &e) {
-                logerr(e.what());
-                req_conn.state = RequestState::Error;
+    while (true) {
+        switch (state) {
+        case State::ReceivedRequest:
+            if (command == Cmd::Accept) {
+                // send accept
+            } else if (command == Cmd::Deny) {
+                // send deny
             }
-        } else if(req_conn.state == RequestState::WaitAns){
-            
+            break;
+        case State::SendingRequest:
+            //send request
+            state = State::WaitAnswer;
+            break;
+        case State::WaitAnswer:
+            // if(пришел)state = State::Connected если пол, если нет - state = State::Denied
+            break;
+        case State::Connected:
+            //отправляем данные из очереди
+            break;
+        case State::Denied:
+            //ждём команду disconnect или разъединение с той стороны и меняем на State::Closed
+            break;
+        case State::Error:
+            // ждем команду Disconnect
+            break;
+        case State::Closed:
+            // уничтожаем сокет
+            break;
         }
     }
 }
