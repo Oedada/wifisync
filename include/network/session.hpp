@@ -1,6 +1,11 @@
 #include "fs/data_manager.hpp"
 #include "network/TCPSocket.hpp"
+#include "util/queue.hpp"
+#include "util/bytepipe.hpp"
+#include <condition_variable>
+#include <functional>
 #include <string>
+#include <thread>
 #include <variant>
 
 enum class State {
@@ -13,32 +18,62 @@ enum class State {
     Closed
 };
 
-enum class Cmd {
-    Idle,
-    Accept,
-    Deny,
-    Disconnect
+enum class Cmd { Idle, Accept, Deny, Disconnect };
+
+enum class Direction { Incoming, Outgoing };
+
+enum class Step { Initialization, DataTransfering, Finalization, Stopped };
+
+class SmallMsg {
+  public:
+    SmallMsg(std::string msg) : msg(msg) {}
+    std::string msg;
 };
 
-enum class Direction {
-    Incoming,
-    Outgoing
-}
+class BigMsg {
+  public:
+    BigMsg(std::function<std::vector<char>(uint64_t)> read_func)
+        : read(read_func) {}
+    std::function<std::vector<char>(uint64_t)> read;
+};
 
-class Session{
-    private:
-        DataManager dm;
-        TCPSocket sock;
-        State state;
-        Cmd command;
-        Direction dir;
-        std::string ConnectRequestHello;
-        std::string ConnectResponseHello;
-        void read_received_data();
-    public:
-        Session(TCPSocket s, Direction dir);
-        bool set_request_cmd(RequestCmd cmd);
-        bool set_response_cmd(ResponseCmd cmd);
-        void cycle();
+class Session {
+  private:
+    // storages
+    DataManager dm;
+    TCPSocket sock;
+    SafeQueue<std::variant<SmallMsg, BigMsg>> send_queue;
+    BytePipe recv_pipe;
+    //locks
+    std::mutex mtx;
+    std::condition_variable state_and_step_cv;
+    std::condition_variable cmd_cv;
+    // threads
+    std::thread process_cmd_thread;
+    std::thread process_msg_thread;
+    // states
+    State state;
+    Cmd command;
+    Direction dir;
+    Step step = Step::Initialization;
+    // messages
+    std::string AcceptMessage;
+    std::string DenyMessage;
+    std::string ConnectRequestMessage;
+    // methods
+    void send_accept(int timeout);
+    void send_deny(int timeout);
+    void send_request(int timeout);
+    bool get_access_or_deny(int timeout);
+    void close_sock();
+    void process_cmd();
+    void process_msg();
 
+  public:
+    Session(TCPSocket s, Direction dir);
+    void process();
+    bool is_stopped();
+    bool set_cmd(Cmd cmd);
+    bool push_msg(SmallMsg msg);
+    bool push_msg(BigMsg msg);
 };

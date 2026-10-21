@@ -23,7 +23,7 @@ class TCPSocket{
         // move-оператор
         TCPSocket& operator=(TCPSocket&& other) noexcept {
             if (this != &other) {
-                close(sock);          // освободить текущий ресурс
+                ::close(sock);          // освободить текущий ресурс
                 sock = other.sock;
                 other.sock = -1;
             }
@@ -44,6 +44,7 @@ class TCPSocket{
         void recv_file(std::filesystem::path file_path);
         void send_file_with_name(std::filesystem::path file_path);
         std::filesystem::path recv_file_with_name(std::filesystem::path dir_path);
+        void close();
         ~TCPSocket();
 
     private:

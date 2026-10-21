@@ -1,5 +1,6 @@
 #pragma once
 
+#include "util/utils.hpp"
 #include <SDL2/SDL.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -17,3 +18,6 @@ nlohmann::json read_json(std::string_view rel_path);
 std::ofstream get_fout(std::string_view rel_path);
 std::ofstream get_fout(std::string_view rel_path, bool bin_mode);
 } // namespace FileAccess
+
+bool is_dryrun();
+std::string dryrun_root_path();

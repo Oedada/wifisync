@@ -1,5 +1,6 @@
 #include "util/init.hpp"
 #include "fs/data_manager.hpp"
+#include "util/utils.hpp"
 #include "uuid.h"
 #include <fstream>
 #include <random>

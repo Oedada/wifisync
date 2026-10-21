@@ -1,5 +1,4 @@
 #pragma once
-
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -25,3 +24,5 @@ void print_vector(const std::vector<T>& v) {
     }
     std::cout << "]\n";
 }
+
+bool is_dryrun();

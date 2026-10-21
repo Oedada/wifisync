@@ -24,8 +24,9 @@ UdpBroadcast::UdpBroadcast(int p) : broadcast_port(p) {
     if (broadcast_sock < 0) {
         throw std::runtime_error("Can't create socket");
     }
+    std::string uuid_and_name = dm.get_uuid() + ":" + dm.get_name();
     BroadcastMsg = constants::StaticBroadcastMessage + uuid_and_name;
-    ConnectResponse = constants::StaticResponseConnect + uuid_and_name;
+    ConnectResponse = constants::StaticConnectRequest + uuid_and_name;
     // get own addr and broadcast addr
     if (!get_own_and_brcast_addr(own_addr, broadcast_addr)) {
         get_own_ip_legasy();
@@ -100,17 +101,17 @@ std::pair<bool, std::string> UdpBroadcast::recv(const enum Message &msg) {
             }
             break;
         case (Message::ConnectRequest):
-            if (recv_size > strlen(constants::StaticRequestConnect) &&
-                memcmp(recv_buf, constants::StaticRequestConnect,
-                       strlen(constants::StaticRequestConnect)) == 0) {
+            if (recv_size > strlen(constants::StaticConnectRequest) &&
+                memcmp(recv_buf, constants::StaticConnectRequest,
+                       strlen(constants::StaticConnectRequest)) == 0) {
                 return add_to_found_devices_if_not_own_uuid(recv_buf,
                                                             recv_size);
             }
             break;
         case (Message::ConnectResponse):
-            if (recv_size > strlen(constants::StaticResponseConnect) &&
-                memcmp(recv_buf, constants::StaticResponseConnect,
-                       strlen(constants::StaticResponseConnect)) == 0) {
+            if (recv_size > strlen(constants::StaticConnectRequest) &&
+                memcmp(recv_buf, constants::StaticConnectRequest,
+                       strlen(constants::StaticConnectRequest)) == 0) {
                 return add_to_found_devices_if_not_own_uuid(recv_buf,
                                                             recv_size);
             }

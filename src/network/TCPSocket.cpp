@@ -185,6 +185,13 @@ std::string TCPSocket::ip(){
     return ip;
 }
 
+void TCPSocket::close(){
+    if(sock >= 0){
+        logwarn("Socket closed");
+        ::close(sock);
+    }
+}
+
 TCPSocket::~TCPSocket(){
     if (sock >= 0){
         logwarn("Socket closed");

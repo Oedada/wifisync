@@ -31,12 +31,14 @@ add_compile_options(
 )
 
 add_executable(app 
-  src/threads.cpp
+  tests/main.cpp
   src/core/difference.cpp
   src/core/dif_work.cpp
   src/core/dif_walker.cpp
   src/core/transport.cpp
   src/core/change_applier.cpp
+  src/network/session.cpp
+  src/util/bytepipe.cpp
   src/network/broadcasts.cpp
   src/network/TCPSocket.cpp
   src/network/http_server.cpp

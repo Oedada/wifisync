@@ -1,26 +1,32 @@
 #include "fs/data_manager.hpp"
 #include "fs/environment.hpp"
 #include "util/constants.hpp"
+#include "util/utils.hpp"
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <stdexcept>
 #include <sys/types.h>
 #include <vector>
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 DataManager::DataManager() {
+    logmsg("log");
     try {
         config = json::parse(FileAccess::get_fin(constants::paths::config));
     } catch (const json::parse_error) {
         config = Config();
     } catch (fs::filesystem_error) {
         config = Config();
+    } catch (std::runtime_error &e){
+        config = Config();
     }
 }
 
 void DataManager::save_config() {
     json out = config;
+    logmsg("save");
     std::ofstream fout = FileAccess::get_fout(constants::paths::config);
     fout << out.dump(4);
 }
@@ -68,6 +74,8 @@ DeviceManager::DeviceManager() {
     } catch (const json::parse_error) {
         devices = {};
     } catch (fs::filesystem_error) {
+        devices = {};
+    } catch (std::runtime_error &e){
         devices = {};
     }
 }

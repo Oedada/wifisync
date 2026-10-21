@@ -5,6 +5,9 @@
 
 
 namespace constants {
+//env
+inline const std::string env_dryrun = "DRYRUN";
+inline const std::string env_dryrun_root_path = "DRYRUN_ROOT_PATH";
 // stable
 inline const std::string project_name = "wifisync";
 inline const std::string author_name = "Oedada";
@@ -28,8 +31,9 @@ inline const std::string UNIT_TYPE_FILE = "file";
 const int SLEEP_TIME = 200000;
 const int TIMEOUT_TIME = 3;
 const char StaticBroadcastMessage[] = "Wifisync Hello Wifi:";
-const char StaticRequestConnect[] = "Wifisync Connect Request:";
-const char StaticResponseConnect[] = "Wifisync Connect Response:";
+const char StaticAcceptRequest[] = "Request Accepted:";
+const char StaticDenyRequest[] = "Request Denied:";
+const char StaticConnectRequest[] = "Connect Request";
 inline const char *TEST_NET_IP = "192.0.2.1";
 inline const char *PING_CONNECT_TEST_IP = "8.8.8.8";
 inline const char *GLOBAL_BROADCAST_IP = "255.255.255.255";
@@ -42,9 +46,12 @@ constexpr int SIZE_HEADER_BYTES = 8;
 constexpr uint16_t BROADCAST_PORT = 12312;
 constexpr uint16_t TCP_PORT = 12345;
 constexpr int COUNT_FIND_DEVICE = 10;
+const char MessageEndSymbol = '#';
 
 // paths
 namespace paths {
+inline constexpr const std::string dry_run_file = "dryrun";
+inline constexpr const std::string dry_run_folder = "./dryrun.d";
 inline constexpr const std::string_view config = "config.json";
 namespace data {
 inline constexpr const std::string_view current_snapshot =
