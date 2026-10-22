@@ -12,7 +12,6 @@ namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 DataManager::DataManager() {
-    logmsg("log");
     try {
         config = json::parse(FileAccess::get_fin(constants::paths::config));
     } catch (const json::parse_error) {
@@ -26,7 +25,7 @@ DataManager::DataManager() {
 
 void DataManager::save_config() {
     json out = config;
-    logmsg("save");
+    logmsg(out.dump(4));
     std::ofstream fout = FileAccess::get_fout(constants::paths::config);
     fout << out.dump(4);
 }

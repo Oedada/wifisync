@@ -1,4 +1,5 @@
 #include "util/init.hpp"
+#include "util/utils.hpp"
 #include "fs/data_manager.hpp"
 #include "util/utils.hpp"
 #include "uuid.h"
@@ -12,6 +13,7 @@ void calculate_and_set_uuid(DataManager dm) {
         std::mt19937 rng{std::random_device{}()};
         uuids::uuid_random_generator gen{rng};
         uuids::uuid id = gen();
+        logmsg(std::string("LOOOOOL: ") + uuids::to_string(id));
         dm.set_uuid(uuids::to_string(id));
     }
 }

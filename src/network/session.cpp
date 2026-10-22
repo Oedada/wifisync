@@ -4,7 +4,9 @@
 #include "util/utils.hpp"
 #include <mutex>
 #include <nlohmann/detail/meta/type_traits.hpp>
+#include <sstream>
 #include <stdexcept>
+#include <string>
 #include <thread>
 #include <variant>
 
@@ -15,11 +17,11 @@ Session::Session(TCPSocket s, Direction dir) : sock(std::move(s)), dir(dir) {
         state = State::SendingRequest;
     }
     std::string uuid_and_name = dm.get_uuid() + ":" + dm.get_name();
-    AcceptMessage = constants::StaticAcceptRequest + uuid_and_name +
+    AcceptMessage = constants::StaticAcceptRequest + std::string(":") + uuid_and_name +
                     constants::MessageEndSymbol;
-    DenyMessage = constants::StaticDenyRequest + uuid_and_name +
+    DenyMessage = constants::StaticDenyRequest + std::string(":") + uuid_and_name +
                   constants::MessageEndSymbol;
-    ConnectRequestMessage = constants::StaticConnectRequest + uuid_and_name +
+    ConnectRequestMessage = constants::StaticConnectRequest + std::string(":") + uuid_and_name +
                             constants::MessageEndSymbol;
 }
 
@@ -42,6 +44,24 @@ void Session::send_deny(int timeout) { sock.send(DenyMessage); }
 
 void Session::send_request(int timeout) { sock.send(ConnectRequestMessage); }
 
+bool Session::accept_or_deny(std::string s){
+    std::stringstream ss(s);
+    std::string response;
+    std::getline(ss, response, ':');
+    std::string uuid;
+    std::getline(ss, uuid, ':');
+    std::string name;
+    std::getline(ss, name, ':');
+    if(response == constants::StaticAcceptRequest){
+        return true;
+    } else if(response == constants::StaticDenyRequest){
+        return false;
+    } else {
+        throw std::runtime_error("Unknow message on get response: " + s);
+    }
+
+}
+
 bool Session::get_access_or_deny(int timeout) {
     std::string buf;
     char c = 's';
@@ -49,13 +69,7 @@ bool Session::get_access_or_deny(int timeout) {
         sock.receive(&c, 1);
         buf += c;
     }
-    if (buf == AcceptMessage) {
-        return true;
-    } else if (buf == DenyMessage) {
-        return false;
-    } else {
-        throw std::runtime_error("Unknow message on get response");
-    }
+    return accept_or_deny(buf);
 }
 
 bool Session::set_cmd(Cmd cmd) {
@@ -141,6 +155,7 @@ bool Session::push_msg(SmallMsg msg) { return send_queue.push(msg); }
 // state_and_step_cv на send_queue поставить и на step
 void Session::process_msg() {
     while (step != Step::Stopped) {
+        if(!send_queue.empty()){
         auto msg_or_null = send_queue.get();
         if (msg_or_null.has_value()) {
             auto msg = msg_or_null.value();
@@ -158,6 +173,13 @@ void Session::process_msg() {
         } else {
             // или доотправить оставшиеся или кинуть bye сообщение
             break;
+        }}
+        if(!recv_pipe.empty()){
+            char buf[constants::BUFFER_SIZE];
+            int n;
+            while((n = sock.receive(buf, constants::BUFFER_SIZE) != 0)){
+                recv_pipe.write(std::span<char>(buf, n));
+            }
         }
         auto oldStep = step;
         std::unique_lock<std::mutex> lock(mtx);
@@ -165,4 +187,8 @@ void Session::process_msg() {
             return oldStep != step || !send_queue.empty() || !recv_pipe.empty();
         });
     }
+}
+
+std::vector<char> Session::recv_bytes(uint64_t n){
+    return recv_pipe.read(n);
 }

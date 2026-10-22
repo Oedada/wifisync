@@ -5,6 +5,7 @@
 #include <condition_variable>
 #include <functional>
 #include <string>
+#include <sys/types.h>
 #include <thread>
 #include <variant>
 
@@ -68,6 +69,7 @@ class Session {
     void close_sock();
     void process_cmd();
     void process_msg();
+    bool accept_or_deny(std::string s);
 
   public:
     Session(TCPSocket s, Direction dir);
@@ -76,4 +78,5 @@ class Session {
     bool set_cmd(Cmd cmd);
     bool push_msg(SmallMsg msg);
     bool push_msg(BigMsg msg);
+    std::vector<char> recv_bytes(uint64_t n);
 };

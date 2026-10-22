@@ -5,12 +5,16 @@
 #include "util/init.hpp"
 #include "util/utils.hpp"
 #include <functional>
+#include <stdexcept>
+#include <string>
 #include <thread>
 
 void client() {
     Session session(client_connect(addr_from_ip_and_port("127.0.0.1", 7777)),
                     Direction::Outgoing);
     std::thread t(&Session::process, std::ref(session));
+    session.push_msg(SmallMsg("hii"));
+    logmsg("msg pushed");
     t.join();
 }
 
@@ -19,22 +23,38 @@ void server() {
     while (!s.is_ready_to_accept()) {
     }
     Session session(s.accept_conn(), Direction::Incoming);
-    logmsg("connected");
     std::thread t(&Session::process, std::ref(session));
     session.set_cmd(Cmd::Accept);
+    logmsg("connected");
+    std::vector<char> received = session.recv_bytes(3);
+    logmsg("recved");
+    logmsg(std::string(received.begin(), received.end()));
     t.join();
 }
 
-int main() {
+std::vector<std::string> check_args(int argc, char* argv[]){
+    std::vector<std::string> vs;
+    for(int i = 0; i < argc; i++){
+        vs.push_back(std::string(argv[i]));
+    }
+    return vs;
+}
+
+int main(int argc, char *argv[]) {
+    init();
     if (is_dryrun()) {
         logmsg("dry run");
     }
-    init();
-    DataManager dm;
-    logmsg(dm.get_uuid());
-    std::thread client_th(client);
+    auto args = check_args(argc, argv);
+    if(args.empty()){
+        throw std::runtime_error("Null args");
+    }
+    if(args[1] == "s"){
     std::thread server_th(server);
-    client_th.join();
     server_th.join();
+    } else if(args[1] == "c"){
+    std::thread client_th(client);
+    client_th.join();
+    }
     return 0;
 }
