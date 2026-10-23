@@ -1,6 +1,8 @@
 #include "network/TCPSocket.hpp"
 #include "util/constants.hpp"
 #include "util/utils.hpp"
+#include <poll.h>
+#include <cerrno>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
@@ -9,6 +11,7 @@
 #include <iostream>
 #include <netinet/in.h>
 #include <stdexcept>
+#include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <thread>
@@ -39,13 +42,22 @@ void TCPSocket::send(const uint64_t &buf){
     ::send(sock, buf_bytes, sizeof(uint64_t), 0);
 }
 
-size_t TCPSocket::receive(void *data, size_t size){
+size_t TCPSocket::receive(void *data, size_t size, bool non_block){
     check_sock();
     size_t total = 0;
     char* ptr = static_cast<char*>(data);
     while(total < size){
-        ssize_t n = ::recv(sock, ptr + total, size-total, 0);
-        while(n < 0){
+        ssize_t n;
+        if(non_block){
+            n = ::recv(sock, ptr + total, size-total, MSG_DONTWAIT);
+        }
+        else{
+            n = ::recv(sock, ptr + total, size-total, 0);
+        }
+        if(n < 0){
+            if(errno == EAGAIN || errno == EWOULDBLOCK){
+                return 0;
+            }
             std::cerr << "Failed receiving data\n";
             std::this_thread::sleep_for(std::chrono::microseconds(constants::SLEEP_TIME));
         }
@@ -56,6 +68,28 @@ size_t TCPSocket::receive(void *data, size_t size){
         }
     }
     return total;
+}
+
+size_t TCPSocket::receive(void *data, size_t size){
+    return receive(data, size, false);
+}
+
+bool TCPSocket::empty(){
+
+pollfd pfd{
+    .fd = sock,
+    .events = POLLIN
+};
+
+int ret = poll(&pfd, 1, 0);
+
+if (ret > 0 && (pfd.revents & POLLIN)) {
+    return false;
+} else if (ret == 0) {
+    return true;
+} else {
+    throw std::runtime_error("Some error in empty sock func");
+}
 }
 
 uint64_t TCPSocket::recv_uint64(){

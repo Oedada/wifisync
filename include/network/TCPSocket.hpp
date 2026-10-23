@@ -31,11 +31,13 @@ class TCPSocket{
         }
         std::string ip();
         TCPSocket(const int s) : sock(s){}
+        bool empty();
         void send(const std::vector<char> &buf, const size_t size);
         void send(const std::string &buf);
         void send(const uint64_t &buf);
         uint64_t recv_uint64();
         size_t receive(void *buf, size_t size);
+        size_t receive(void *buf, size_t size, bool non_block);
         void smart_send_msg(const std::string &msg);
         std::string smart_recv_msg();
         void send_file(std::ifstream& fin, uint64_t file_size);

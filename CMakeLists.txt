@@ -28,7 +28,9 @@ add_compile_options(
     -Wall
     -Wextra
     -pthread
+    -fsanitize=address,undefined -g
 )
+add_link_options(-fsanitize=address,undefined)
 
 add_executable(app 
   tests/main.cpp

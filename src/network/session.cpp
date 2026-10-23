@@ -38,7 +38,7 @@ void Session::process() {
 
 void Session::close_sock() { sock.close(); }
 
-void Session::send_accept(int timeout) { sock.send(AcceptMessage); }
+void Session::send_accept(int timeout) {logmsg("accept sended"); sock.send(AcceptMessage); }
 
 void Session::send_deny(int timeout) { sock.send(DenyMessage); }
 
@@ -154,13 +154,15 @@ bool Session::push_msg(SmallMsg msg) { return send_queue.push(msg); }
 // TODO: дописать вот эту фигню, чтобы цикл не крутился вхолостую, там надо
 // state_and_step_cv на send_queue поставить и на step
 void Session::process_msg() {
-    while (step != Step::Stopped) {
+    while (step != Step::Finalization) {
+        if(step == Step::DataTransfering){
         if(!send_queue.empty()){
         auto msg_or_null = send_queue.get();
         if (msg_or_null.has_value()) {
             auto msg = msg_or_null.value();
             if (std::holds_alternative<SmallMsg>(msg)) {
                 auto small_msg = std::get<SmallMsg>(msg);
+                logmsg(std::string("For send:") + small_msg.msg);
                 sock.send(small_msg.msg);
             } else {
                 auto big_msg = std::get<BigMsg>(msg);
@@ -174,18 +176,18 @@ void Session::process_msg() {
             // или доотправить оставшиеся или кинуть bye сообщение
             break;
         }}
-        if(!recv_pipe.empty()){
+        if(!sock.empty()){
             char buf[constants::BUFFER_SIZE];
             int n;
-            while((n = sock.receive(buf, constants::BUFFER_SIZE) != 0)){
-                recv_pipe.write(std::span<char>(buf, n));
-            }
+            n = sock.receive(buf, constants::BUFFER_SIZE, true);
+            logmsg(std::string("Received:") + std::string(buf));
+            recv_pipe.write(std::span<char>(buf, n));
         }
         auto oldStep = step;
         std::unique_lock<std::mutex> lock(mtx);
         state_and_step_cv.wait(lock, [&] {
-            return oldStep != step || !send_queue.empty() || !recv_pipe.empty();
-        });
+            return oldStep != step || !send_queue.empty() || !sock.empty();
+        });}
     }
 }
 
