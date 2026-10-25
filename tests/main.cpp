@@ -26,7 +26,7 @@ void server() {
     std::thread t(&Session::process, std::ref(session));
     session.set_cmd(Cmd::Accept);
     logmsg("connected");
-    std::vector<char> received = session.recv_bytes(3);
+    std::vector<char> received = session.recv_bytes(1);
     logmsg("recved");
     logmsg(std::string(received.begin(), received.end()));
     t.join();

@@ -10,6 +10,7 @@
 #include <variant>
 
 enum class State {
+    Idle,
     ReceivedRequest,
     SendingRequest,
     WaitAnswer,
@@ -36,6 +37,12 @@ class BigMsg {
     BigMsg(std::function<std::vector<char>(uint64_t)> read_func)
         : read(read_func) {}
     std::function<std::vector<char>(uint64_t)> read;
+};
+
+struct HelloMsg{
+  std::string uuid;
+  std::string name;
+  std::string msg;
 };
 
 class Session {
@@ -65,6 +72,7 @@ class Session {
     void send_accept(int timeout);
     void send_deny(int timeout);
     void send_request(int timeout);
+    bool is_got_request(int timeout);
     bool get_access_or_deny(int timeout);
     void close_sock();
     void process_cmd();

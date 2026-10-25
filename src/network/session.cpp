@@ -12,7 +12,7 @@
 
 Session::Session(TCPSocket s, Direction dir) : sock(std::move(s)), dir(dir) {
     if (dir == Direction::Incoming) {
-        state = State::ReceivedRequest;
+        state = State::Idle;
     } else {
         state = State::SendingRequest;
     }
@@ -44,21 +44,35 @@ void Session::send_deny(int timeout) { sock.send(DenyMessage); }
 
 void Session::send_request(int timeout) { sock.send(ConnectRequestMessage); }
 
-bool Session::accept_or_deny(std::string s){
+HelloMsg parse_msg(std::string s){
+    HelloMsg hello_msg{};
     std::stringstream ss(s);
-    std::string response;
-    std::getline(ss, response, ':');
-    std::string uuid;
-    std::getline(ss, uuid, ':');
-    std::string name;
-    std::getline(ss, name, ':');
-    if(response == constants::StaticAcceptRequest){
+    std::getline(ss, hello_msg.msg, ':');
+    std::getline(ss, hello_msg.uuid, ':');
+    std::getline(ss, hello_msg.name, ':');
+    return hello_msg;
+}
+
+bool Session::accept_or_deny(std::string s){
+    auto parsed_msg = parse_msg(s);
+    if(parsed_msg.msg == constants::StaticAcceptRequest){
         return true;
-    } else if(response == constants::StaticDenyRequest){
+    } else if(parsed_msg.msg == constants::StaticDenyRequest){
         return false;
     } else {
         throw std::runtime_error("Unknow message on get response: " + s);
     }
+
+}
+
+bool Session::is_got_request(int timeout){
+    std::string buf;
+    char c = 's';
+    while (c != constants::MessageEndSymbol) {
+        sock.receive(&c, 1);
+        buf += c;
+    }
+    return parse_msg(buf).msg == constants::StaticConnectRequest;
 
 }
 
@@ -77,7 +91,7 @@ bool Session::set_cmd(Cmd cmd) {
     switch (cmd) {
     case Cmd::Accept:
     case Cmd::Deny:
-        if (step == Step::Initialization && state == State::ReceivedRequest) {
+        if (step == Step::Initialization && (state == State::Idle || state == State::ReceivedRequest)) {
             command = cmd;
             return true;
         }
@@ -103,6 +117,10 @@ void Session::process_cmd() {
     std::unique_lock<std::mutex> lock(mtx);
     while (step != Step::Stopped) {
         switch (state) {
+        case State::Idle:
+           if(is_got_request(0)){
+                state = State::ReceivedRequest;
+           }
         case State::ReceivedRequest:
             if (command == Cmd::Accept) {
                 send_accept(0);
@@ -151,8 +169,6 @@ bool Session::push_msg(BigMsg msg) { return send_queue.push(msg); }
 
 bool Session::push_msg(SmallMsg msg) { return send_queue.push(msg); }
 
-// TODO: дописать вот эту фигню, чтобы цикл не крутился вхолостую, там надо
-// state_and_step_cv на send_queue поставить и на step
 void Session::process_msg() {
     while (step != Step::Finalization) {
         if(step == Step::DataTransfering){
@@ -176,7 +192,8 @@ void Session::process_msg() {
             // или доотправить оставшиеся или кинуть bye сообщение
             break;
         }}
-        if(!sock.empty()){
+        if(1){
+            logmsg(std::to_string(sock.empty()));
             char buf[constants::BUFFER_SIZE];
             int n;
             n = sock.receive(buf, constants::BUFFER_SIZE, true);
@@ -186,7 +203,7 @@ void Session::process_msg() {
         auto oldStep = step;
         std::unique_lock<std::mutex> lock(mtx);
         state_and_step_cv.wait(lock, [&] {
-            return oldStep != step || !send_queue.empty() || !sock.empty();
+            return oldStep != step || !send_queue.empty() || 1;
         });}
     }
 }

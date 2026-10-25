@@ -67,6 +67,7 @@ size_t TCPSocket::receive(void *data, size_t size, bool non_block){
             total += n;
         }
     }
+    logmsg(std::string(ptr, ptr + total));
     return total;
 }
 
