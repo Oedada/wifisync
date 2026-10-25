@@ -4,6 +4,7 @@
 #include "util/bytepipe.hpp"
 #include <condition_variable>
 #include <functional>
+#include <span>
 #include <string>
 #include <sys/types.h>
 #include <thread>
@@ -78,6 +79,7 @@ class Session {
     void process_cmd();
     void process_msg();
     bool accept_or_deny(std::string s);
+    void sock_recv_callback(std::span<const char> data);
 
   public:
     Session(TCPSocket s, Direction dir);

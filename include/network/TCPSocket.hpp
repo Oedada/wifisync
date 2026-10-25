@@ -1,9 +1,12 @@
 #pragma once
 
 #include <arpa/inet.h>
+#include <atomic>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <netinet/in.h>
+#include <span>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -35,6 +38,7 @@ class TCPSocket{
         void send(const std::vector<char> &buf, const size_t size);
         void send(const std::string &buf);
         void send(const uint64_t &buf);
+        void receive_callback(std::function<void (std::span<const char>)> callback, std::atomic<bool> running);
         uint64_t recv_uint64();
         size_t receive(void *buf, size_t size);
         size_t receive(void *buf, size_t size, bool non_block);

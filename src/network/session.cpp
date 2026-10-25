@@ -10,7 +10,7 @@
 #include <thread>
 #include <variant>
 
-Session::Session(TCPSocket s, Direction dir) : sock(std::move(s)), dir(dir) {
+Session::Session(TCPSocket s, Direction dir) : sock(std::move(s)), recv_pipe(state_and_step_cv), dir(dir) {
     if (dir == Direction::Incoming) {
         state = State::Idle;
     } else {
@@ -28,6 +28,7 @@ Session::Session(TCPSocket s, Direction dir) : sock(std::move(s)), dir(dir) {
 void Session::process() {
     process_cmd_thread = std::thread(&Session::process_cmd, this);
     process_msg_thread = std::thread(&Session::process_msg, this);
+
     if (process_cmd_thread.joinable()) {
         process_cmd_thread.join();
     }
@@ -210,4 +211,8 @@ void Session::process_msg() {
 
 std::vector<char> Session::recv_bytes(uint64_t n){
     return recv_pipe.read(n);
+}
+
+void Session::sock_recv_callback(std::span<const char> data){
+    recv_pipe.write(std::span<const char> {data.begin(), data.end()});
 }
