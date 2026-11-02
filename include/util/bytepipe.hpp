@@ -1,4 +1,6 @@
+#pragma once
 #include <condition_variable>
+#include <cstddef>
 #include <cstdint>
 #include <mutex>
 #include <span>
@@ -6,13 +8,26 @@
 class BytePipe{
     private:
         std::mutex mtx;
-        std::vector<char> buf;
+        std::vector<std::byte> buf;
         std::condition_variable cv;
-        std::condition_variable &on_read;
     public:
-        BytePipe(std::condition_variable &on_readable) : on_read(on_readable){}
-        std::vector<char> read(uint64_t n);
-        std::vector<char> eat(uint64_t n);
-        void write(std::span<const char> data);
+        BytePipe(const BytePipe &) = delete;
+        BytePipe& operator=(const BytePipe &) = delete;
+
+        BytePipe(BytePipe &&other) noexcept {
+            buf = other.read(other.size());
+        }
+
+        BytePipe& operator=(BytePipe &&other) noexcept {
+            std::lock_guard<std::mutex> lock(mtx);
+            buf.clear();
+            buf = other.read(other.size());
+            return *this;
+        }
+        BytePipe(){};
+        std::vector<std::byte> read(uint64_t n);
+        std::vector<std::byte> eat(uint64_t n);
+        void write(std::span<const std::byte> data);
         bool empty();
+        uint64_t size();
 };

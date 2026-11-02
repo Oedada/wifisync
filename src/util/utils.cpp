@@ -1,4 +1,6 @@
+#include "util/utils.hpp"
 #include "util/constants.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -59,7 +61,7 @@ void toBytes(uint16_t x, unsigned char *out_b) {
     }
 }
 
-uint16_t fromBytes16(unsigned char *in_b) {
+uint64_t fromBytes16(unsigned char *in_b) {
     uint16_t x = 0;
     for (int i = 0; i < 2; i++) {
         x |= (uint16_t)in_b[1 - i] << i * 2;
@@ -92,4 +94,12 @@ void write_json(fs::path path, json j) {
     std::ofstream fout(path);
     std::string jstring = j.dump();
     fout.write(jstring.c_str(), jstring.size());
+}
+
+void logmsg(std::vector<std::byte> msg){
+    std::cout << "[";
+    for(uint64_t i = 0; i < msg.size(); i++){
+        std::cout << std::to_integer<char>(msg[i]);
+    }
+    std::cout << "]\n";
 }

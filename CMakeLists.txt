@@ -39,13 +39,12 @@ add_executable(app
   src/core/dif_walker.cpp
   src/core/transport.cpp
   src/core/change_applier.cpp
-  src/network/session.cpp
   src/util/bytepipe.cpp
   src/network/broadcasts.cpp
+  src/network/session.cpp
   src/network/TCPSocket.cpp
   src/network/http_server.cpp
   src/network/server.cpp
-  src/network/websocket.cpp
   src/crypto/ed25519.cpp
   src/crypto/x25519.cpp
   src/crypto/hash.cpp

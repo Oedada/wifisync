@@ -1,7 +1,9 @@
 #include "network/session.hpp"
 #include "network/TCPSocket.hpp"
 #include "util/constants.hpp"
+#include "util/exceptions.hpp"
 #include "util/utils.hpp"
+#include <cstdint>
 #include <mutex>
 #include <nlohmann/detail/meta/type_traits.hpp>
 #include <sstream>
@@ -10,24 +12,27 @@
 #include <thread>
 #include <variant>
 
-Session::Session(TCPSocket s, Direction dir) : sock(std::move(s)), recv_pipe(state_and_step_cv), dir(dir) {
+Session::Session(TCPSocket s, Direction dir)
+    : sock(std::move(s)), send_queue(process_msg_cv), recv_pipe(), dir(dir) {
     if (dir == Direction::Incoming) {
         state = State::Idle;
     } else {
         state = State::SendingRequest;
     }
     std::string uuid_and_name = dm.get_uuid() + ":" + dm.get_name();
-    AcceptMessage = constants::StaticAcceptRequest + std::string(":") + uuid_and_name +
-                    constants::MessageEndSymbol;
-    DenyMessage = constants::StaticDenyRequest + std::string(":") + uuid_and_name +
-                  constants::MessageEndSymbol;
-    ConnectRequestMessage = constants::StaticConnectRequest + std::string(":") + uuid_and_name +
-                            constants::MessageEndSymbol;
+    AcceptMessage = constants::StaticAcceptRequest + std::string(":") +
+                    uuid_and_name + constants::MessageEndSymbol;
+    DenyMessage = constants::StaticDenyRequest + std::string(":") +
+                  uuid_and_name + constants::MessageEndSymbol;
+    ConnectRequestMessage = constants::StaticConnectRequest + std::string(":") +
+                            uuid_and_name + constants::MessageEndSymbol;
 }
 
 void Session::process() {
     process_cmd_thread = std::thread(&Session::process_cmd, this);
     process_msg_thread = std::thread(&Session::process_msg, this);
+    receive_thread =
+        std::thread(&TCPSocket::receive_callback, &sock, [this](uint64_t n) {});
 
     if (process_cmd_thread.joinable()) {
         process_cmd_thread.join();
@@ -35,17 +40,21 @@ void Session::process() {
     if (process_msg_thread.joinable()) {
         process_msg_thread.join();
     }
+    if (receive_thread.joinable()) {
+        receive_thread.join();
+    }
 }
 
-void Session::close_sock() { sock.close(); }
-
-void Session::send_accept(int timeout) {logmsg("accept sended"); sock.send(AcceptMessage); }
+void Session::send_accept(int timeout) {
+    logmsg("accept sended");
+    sock.send(AcceptMessage);
+}
 
 void Session::send_deny(int timeout) { sock.send(DenyMessage); }
 
 void Session::send_request(int timeout) { sock.send(ConnectRequestMessage); }
 
-HelloMsg parse_msg(std::string s){
+HelloMsg parse_msg(std::string s) {
     HelloMsg hello_msg{};
     std::stringstream ss(s);
     std::getline(ss, hello_msg.msg, ':');
@@ -54,19 +63,18 @@ HelloMsg parse_msg(std::string s){
     return hello_msg;
 }
 
-bool Session::accept_or_deny(std::string s){
+bool Session::accept_or_deny(std::string s) {
     auto parsed_msg = parse_msg(s);
-    if(parsed_msg.msg == constants::StaticAcceptRequest){
+    if (parsed_msg.msg == constants::StaticAcceptRequest) {
         return true;
-    } else if(parsed_msg.msg == constants::StaticDenyRequest){
+    } else if (parsed_msg.msg == constants::StaticDenyRequest) {
         return false;
     } else {
         throw std::runtime_error("Unknow message on get response: " + s);
     }
-
 }
 
-bool Session::is_got_request(int timeout){
+bool Session::is_got_request(int timeout) {
     std::string buf;
     char c = 's';
     while (c != constants::MessageEndSymbol) {
@@ -74,7 +82,6 @@ bool Session::is_got_request(int timeout){
         buf += c;
     }
     return parse_msg(buf).msg == constants::StaticConnectRequest;
-
 }
 
 bool Session::get_access_or_deny(int timeout) {
@@ -92,13 +99,13 @@ bool Session::set_cmd(Cmd cmd) {
     switch (cmd) {
     case Cmd::Accept:
     case Cmd::Deny:
-        if (step == Step::Initialization && (state == State::Idle || state == State::ReceivedRequest)) {
+        if (state == State::Idle || state == State::ReceivedRequest) {
             command = cmd;
             return true;
         }
         return false;
     case Cmd::Disconnect:
-        if (step == Step::DataTransfering && state == State::Connected) {
+        if (state == State::Connected) {
             command = cmd;
             return false;
         }
@@ -106,63 +113,63 @@ bool Session::set_cmd(Cmd cmd) {
     case Cmd::Idle:
         return false;
     }
-    cmd_cv.notify_all();
-}
-
-bool Session::is_stopped() {
-    std::lock_guard<std::mutex> lock(mtx);
-    return step == Step::Stopped;
+    process_cmd_cv.notify_one();
 }
 
 void Session::process_cmd() {
     std::unique_lock<std::mutex> lock(mtx);
-    while (step != Step::Stopped) {
-        switch (state) {
+    while (state.load() != State::Closed && state.load() != State::Error) {
+        switch (state.load()) {
         case State::Idle:
-           if(is_got_request(0)){
-                state = State::ReceivedRequest;
-           }
+            if (is_got_request(0)) {
+                state.store(State::ReceivedRequest);
+            } else {
+                state.store(State::Denied);
+            }
         case State::ReceivedRequest:
             if (command == Cmd::Accept) {
                 send_accept(0);
-                state = State::Connected;
+                state.store(State::Connected);
             } else if (command == Cmd::Deny) {
                 send_deny(0);
-                state = State::Denied;
+                state.store(State::Denied);
             } else {
                 auto old_cmd = command;
-                cmd_cv.wait(lock, [&] { return old_cmd != command; });
+                process_cmd_cv.wait(lock, [&] { return old_cmd != command; });
             }
             break;
         case State::SendingRequest:
             send_request(0);
-            state = State::WaitAnswer;
+            state.store(State::WaitAnswer);
             break;
         case State::WaitAnswer:
             if (get_access_or_deny(0)) {
-                state = State::Connected;
+                state.store(State::Connected);
                 logmsg("Connected");
             } else {
                 logmsg("Denied");
-                state = State::Denied;
+                state.store(State::Denied);
             }
             break;
         case State::Connected:
-            step = Step::DataTransfering;
-            state_and_step_cv.notify_all();
-            state_and_step_cv.wait(lock, [&] {
-                return state == State::Error || state == State::Closed;
+            process_msg_cv.notify_all();
+            process_cmd_cv.wait(lock, [&] {
+                return (state.load() == State::Error ||
+                        state.load() == State::Closed) or
+                       command == Cmd::Disconnect;
             });
+            if (command == Cmd::Disconnect) {
+                close();
+                process_msg_cv.notify_one();
+            }
             break;
         case State::Denied:
         case State::Error:
         case State::Closed:
-            step = Step::Finalization;
-            close_sock();
-            step = Step::Stopped;
             break;
         }
-        state_and_step_cv.notify_all();
+        process_msg_cv.notify_one();
+        receive_cv.notify_one();
     }
 }
 
@@ -171,48 +178,65 @@ bool Session::push_msg(BigMsg msg) { return send_queue.push(msg); }
 bool Session::push_msg(SmallMsg msg) { return send_queue.push(msg); }
 
 void Session::process_msg() {
-    while (step != Step::Finalization) {
-        if(step == Step::DataTransfering){
-        if(!send_queue.empty()){
-        auto msg_or_null = send_queue.get();
-        if (msg_or_null.has_value()) {
-            auto msg = msg_or_null.value();
-            if (std::holds_alternative<SmallMsg>(msg)) {
-                auto small_msg = std::get<SmallMsg>(msg);
-                logmsg(std::string("For send:") + small_msg.msg);
-                sock.send(small_msg.msg);
-            } else {
-                auto big_msg = std::get<BigMsg>(msg);
-                std::vector<char> buf;
-                while ((buf = big_msg.read(constants::BUFFER_SIZE)).size() !=
-                       0) {
-                    sock.send(buf, buf.size());
+    while (state.load() != State::Closed && state.load() != State::Error) {
+        if (state.load() == State::Connected) {
+            if (!send_queue.empty()) {
+                auto msg_or_null = send_queue.get();
+                if (msg_or_null.has_value()) {
+                    auto msg = msg_or_null.value();
+                    if (std::holds_alternative<SmallMsg>(msg)) {
+                        auto small_msg = std::get<SmallMsg>(msg);
+                        try {
+                            sock.send(small_msg.msg);
+                        } catch (const NetworkError &err) {
+                            saved_error = Error::NetworkError;
+                            close();
+                            // закрыть всё что нужно
+                        } catch (const ConnectionClosedError &err) {
+                            saved_error = Error::ConnectionClosed;
+                            close();
+                            // закрыть всё что нужно
+                        }
+                    } else {
+                        auto big_msg = std::get<BigMsg>(msg);
+                        std::vector<std::byte> buf;
+                        while ((buf = big_msg.read(constants::BUFFER_SIZE))
+                                   .size() != 0) {
+                            sock.send(
+                                std::span<std::byte>(buf.data(), buf.size()));
+                        }
+                    }
+                } else {
+                    // или доотправить оставшиеся или кинуть bye сообщение
+                    logmsg("Breaking process msg loop");
+                    break;
                 }
             }
-        } else {
-            // или доотправить оставшиеся или кинуть bye сообщение
-            break;
-        }}
-        if(1){
-            logmsg(std::to_string(sock.empty()));
-            char buf[constants::BUFFER_SIZE];
-            int n;
-            n = sock.receive(buf, constants::BUFFER_SIZE, true);
-            logmsg(std::string("Received:") + std::string(buf));
-            recv_pipe.write(std::span<char>(buf, n));
+            std::unique_lock<std::mutex> lock(mtx);
+            auto oldState = state.load();
+            process_msg_cv.wait(lock, [&] {
+                return oldState != state.load() || !send_queue.empty();
+            });
         }
-        auto oldStep = step;
-        std::unique_lock<std::mutex> lock(mtx);
-        state_and_step_cv.wait(lock, [&] {
-            return oldStep != step || !send_queue.empty() || 1;
-        });}
     }
 }
 
-std::vector<char> Session::recv_bytes(uint64_t n){
-    return recv_pipe.read(n);
+std::vector<std::byte> Session::recv_bytes(uint64_t n) {
+    while (state.load() != State::Closed && state.load() != State::Error) {
+        if (state.load() == State::Connected) {
+            std::vector<std::byte> buf(n);
+            sock.receive(buf.data(), n);
+            return buf;
+        } else {
+            std::unique_lock<std::mutex> lock(mtx);
+            auto oldState = state.load();
+            receive_cv.wait(lock, [&] { return oldState != state.load(); });
+        }
+    }
+    throw std::runtime_error("lol");
 }
 
-void Session::sock_recv_callback(std::span<const char> data){
-    recv_pipe.write(std::span<const char> {data.begin(), data.end()});
+void Session::close() {
+    state.store(State::Closed);
+    sock.close();
 }

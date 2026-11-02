@@ -1,5 +1,6 @@
 #include "network/TCPSocket.hpp"
 #include "util/constants.hpp"
+#include "util/exceptions.hpp"
 #include "util/utils.hpp"
 #include <asm-generic/socket.h>
 #include <cerrno>
@@ -24,14 +25,14 @@
 namespace fs = std::filesystem;
 
 void TCPSocket::check_sock() {
-    if (sock == -1) {
-        throw std::runtime_error("Socket not initialized!");
+    if (sock == -1 || closed.load()) {
+        throw std::runtime_error("Socket closed or not initialized");
     }
 }
 
 void TCPSocket::receive_callback(
-    std::function<void(std::span<const char>)> callback, std::atomic<bool> running) {
-    while (running.load()) {
+    std::function<void(uint64_t received_count)> callback) {
+    while (!closed.load()) {
         pollfd pfd{};
         pfd.fd = sock;
         pfd.events = POLLIN;
@@ -40,50 +41,59 @@ void TCPSocket::receive_callback(
             if (errno == EINTR) {
                 continue;
             } else {
-                throw std::runtime_error("Poll error check the code!!");
+                closed.store(true);
+                throw SystemMethodError("Poll error check the code!!");
             }
         } else if (ret > 0) {
             if (pfd.revents & POLLNVAL) {
-                throw std::runtime_error("Invalid file describtor");
+                closed.store(true);
+                throw SystemMethodError("Invalid file descriptor");
             } else if (pfd.revents & POLLERR) {
                 int err = 0;
                 socklen_t len = sizeof(err);
                 if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len) == -1) {
-                    throw std::runtime_error(
+                    closed.store(true);
+                    throw SystemMethodError(
                         "get sockopt error, there I am a bit lazy");
                 } else if (err != 0) {
                     switch (err) {
                     case ECONNRESET:
                     case ECONNREFUSED:
-                        throw std::runtime_error(
+                        throw ConnectionClosedError(
                             "Connection refused/reset by other side");
                     case ETIMEDOUT:
-                        throw std::runtime_error("Connection timedout");
+                        throw ConnectionClosedError("Connection timedout");
                     case ENETUNREACH:
                     case EHOSTUNREACH:
-                        throw std::runtime_error("Network error");
+                        throw NetworkError("Network error");
                     default:
-                        throw std::runtime_error("Some unhandled socket error");
+                        closed.store(true);
+                        throw TCPSocketError("Some unhandled socket error");
+                        closed.store(true);
                     }
-                } else if(err == 0){
-                    throw std::runtime_error("Unknow by getsockopt socker error");
+                } else if (err == 0) {
+                    closed.store(true);
+                    throw TCPSocketError("Unknow by getsockopt socker error");
                 }
-            } else if(pfd.revents & (POLLIN | POLLHUP)){
-                char buf[constants::BUFFER_SIZE];
+            } else if (pfd.revents & (POLLIN | POLLHUP)) {
+                std::byte buf[constants::BUFFER_SIZE];
                 ssize_t n = ::recv(sock, buf, constants::BUFFER_SIZE, 0);
-                if(n > 0){
-                    callback(std::span<const char> {buf, static_cast<std::size_t>(n)});
-                } else if(n == 0){
-                    throw std::runtime_error("Connection close by other side");
+                if (n > 0) {
+                    pipe.write(std::span<std::byte>(buf, n));
+                    callback(n);
+                } else if (n == 0) {
+                    closed.store(true);
+                    throw ConnectionClosedError("Connection close by other side");
                 } else {
                     switch (errno) {
                     case EINTR:
                     case EWOULDBLOCK:
-                    #if EWOULDBLOCK != EAGAIN
+#if EWOULDBLOCK != EAGAIN
                     case EAGAIN:
-                    #endif
+#endif
                         continue;
                     default:
+                        closed.store(true);
                         throw std::runtime_error("Error while reading socket");
                     }
                 }
@@ -92,14 +102,43 @@ void TCPSocket::receive_callback(
     }
 }
 
-void TCPSocket::send(const std::vector<char> &buf, const size_t size) {
+void TCPSocket::send(std::span<const std::byte> data) {
     check_sock();
-    ::send(sock, buf.data(), size, 0);
+    size_t sended = 0;
+    if(data.size() == 0){
+        return;
+    }
+    while (sended != data.size() && !closed.load()) {
+        auto n = ::send(sock, data.data() + sended, data.size() - sended,
+                        MSG_NOSIGNAL);
+        if (n > 0) {
+            sended += n;
+        } else if (n == 0){
+            throw UntypicalError("Socket send return 0 when the size of data isn't 0");
+        } else if (n < 0) {
+            int error = errno;
+            switch (error) {
+            case EPIPE:
+                throw ConnectionClosedError("Socket closed for sending");
+            case ECONNREFUSED:
+            case ECONNRESET:
+            case ENOTCONN:
+                throw ConnectionClosedError("Connection are refused");
+            case EINTR:
+            case EAGAIN:
+#if EAGAIN != EWOULDBLOCK
+            case EWOULDBLOCK:
+#endif
+                continue;
+            default:
+                throw SystemMethodError("Unknow method error while sending data");
+            }
+        }
+    }
 }
 
 void TCPSocket::send(const std::string &buf) {
-    std::vector<char> vect(buf.begin(), buf.end());
-    send(vect, vect.size());
+    send(std::span<const std::byte>(reinterpret_cast<const std::byte*>(buf.data()), buf.size()));
 }
 
 void TCPSocket::send(const uint64_t &buf) {
@@ -108,53 +147,23 @@ void TCPSocket::send(const uint64_t &buf) {
     ::send(sock, buf_bytes, sizeof(uint64_t), 0);
 }
 
-size_t TCPSocket::receive(void *data, size_t size, bool non_block) {
+bool TCPSocket::receive(void *data, size_t size, bool non_block) {
     check_sock();
-    size_t total = 0;
-    char *ptr = static_cast<char *>(data);
-    while (total < size) {
-        ssize_t n;
-        if (non_block) {
-            n = ::recv(sock, ptr + total, size - total, MSG_DONTWAIT);
+    if (non_block) {
+        if (pipe.size() >= size) {
+            std::memcpy(data, pipe.eat(size).data(), size);
+            logmsg("Received");
+            return true;
         } else {
-            n = ::recv(sock, ptr + total, size - total, 0);
+            return false;
         }
-        if (n < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                return 0;
-            }
-            std::cerr << "Failed receiving data\n";
-            std::this_thread::sleep_for(
-                std::chrono::microseconds(constants::SLEEP_TIME));
-        }
-        if (n == 0) {
-            throw std::runtime_error("Socket has closed by other side");
-        } else {
-            total += n;
-        }
-    }
-    logmsg(std::string(ptr, ptr + total));
-    return total;
-}
-
-size_t TCPSocket::receive(void *data, size_t size) {
-    return receive(data, size, false);
-}
-
-bool TCPSocket::empty() {
-
-    pollfd pfd{.fd = sock, .events = POLLIN};
-
-    int ret = poll(&pfd, 1, 0);
-
-    if (ret > 0 && (pfd.revents & POLLIN)) {
-        return false;
-    } else if (ret == 0) {
-        return true;
     } else {
-        throw std::runtime_error("Some error in empty sock func");
+        std::memcpy(data, pipe.eat(size).data(), size);
+        return true;
     }
 }
+
+void TCPSocket::receive(void *data, size_t size) { receive(data, size, false); }
 
 uint64_t TCPSocket::recv_uint64() {
     unsigned char bytes[sizeof(uint64_t)];
@@ -186,11 +195,11 @@ std::string TCPSocket::smart_recv_msg() {
 
 void TCPSocket::send_file(std::ifstream &fin, uint64_t file_size) {
     check_sock();
-    std::vector<char> buf(constants::BUFFER_SIZE);
+    std::vector<std::byte> buf(constants::BUFFER_SIZE);
     send(file_size);
     if (fin) {
-        while (fin.read(buf.data(), buf.size()) || fin.gcount() > 0) {
-            send(buf, fin.gcount());
+        while (fin.read(reinterpret_cast<char*>(buf.data()), buf.size()) || fin.gcount() > 0) {
+            send(std::span<std::byte>(buf.data(), buf.size()));
         }
     } else {
         throw std::runtime_error("Input stream doesn't correct");
@@ -285,6 +294,7 @@ std::string TCPSocket::ip() {
 }
 
 void TCPSocket::close() {
+    closed.store(true);
     if (sock >= 0) {
         logwarn("Socket closed");
         ::close(sock);

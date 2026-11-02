@@ -1,10 +1,13 @@
+#pragma once
 #include "fs/data_manager.hpp"
 #include "network/TCPSocket.hpp"
 #include "util/queue.hpp"
 #include "util/bytepipe.hpp"
+#include "util/exceptions.hpp"
+#include <atomic>
 #include <condition_variable>
+#include <cstdint>
 #include <functional>
-#include <span>
 #include <string>
 #include <sys/types.h>
 #include <thread>
@@ -35,9 +38,9 @@ class SmallMsg {
 
 class BigMsg {
   public:
-    BigMsg(std::function<std::vector<char>(uint64_t)> read_func)
+    BigMsg(std::function<std::vector<std::byte>(uint64_t)> read_func)
         : read(read_func) {}
-    std::function<std::vector<char>(uint64_t)> read;
+    std::function<std::vector<std::byte>(uint64_t)> read;
 };
 
 struct HelloMsg{
@@ -53,18 +56,20 @@ class Session {
     TCPSocket sock;
     SafeQueue<std::variant<SmallMsg, BigMsg>> send_queue;
     BytePipe recv_pipe;
+    Error saved_error;
     //locks
     std::mutex mtx;
-    std::condition_variable state_and_step_cv;
-    std::condition_variable cmd_cv;
+    std::condition_variable process_cmd_cv;
+    std::condition_variable process_msg_cv;
+    std::condition_variable receive_cv;
     // threads
     std::thread process_cmd_thread;
     std::thread process_msg_thread;
+    std::thread receive_thread;
     // states
-    State state;
+    std::atomic<State> state;
     Cmd command;
     Direction dir;
-    Step step = Step::Initialization;
     // messages
     std::string AcceptMessage;
     std::string DenyMessage;
@@ -79,7 +84,8 @@ class Session {
     void process_cmd();
     void process_msg();
     bool accept_or_deny(std::string s);
-    void sock_recv_callback(std::span<const char> data);
+    void sock_recv_callback(uint64_t n);
+    void close();
 
   public:
     Session(TCPSocket s, Direction dir);
@@ -88,5 +94,5 @@ class Session {
     bool set_cmd(Cmd cmd);
     bool push_msg(SmallMsg msg);
     bool push_msg(BigMsg msg);
-    std::vector<char> recv_bytes(uint64_t n);
+    std::vector<std::byte> recv_bytes(uint64_t n);
 };

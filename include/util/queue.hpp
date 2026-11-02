@@ -11,9 +11,11 @@ private:
     std::queue<T> q;
     std::mutex mtx;
     std::condition_variable cv;
+    std::condition_variable &on_readable;
     bool closed = false;
 
 public:
+    SafeQueue<T>(std::condition_variable &on_readable) : on_readable(on_readable){}
     std::optional<T> get();
     bool push(T val);
     void close();
@@ -47,7 +49,7 @@ bool SafeQueue<T>::push(T val) {
 
         q.push(std::move(val));
     }
-
+    on_readable.notify_all();
     cv.notify_one();
     return true;
 }
