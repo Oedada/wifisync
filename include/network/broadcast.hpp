@@ -24,6 +24,7 @@ class UdpBroadcast {
     void process();
     bool is_own_ip_bigger(sockaddr_in addr);
     sockaddr_in get_broadcast_addr();
+    std::map<std::string, DeviceData> get_devices();
 
     ~UdpBroadcast();
 

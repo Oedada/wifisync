@@ -1,5 +1,5 @@
 #pragma once
-#include "util/bytepipe.hpp"
+#include "concurrency/bytepipe.hpp"
 #include <arpa/inet.h>
 #include <atomic>
 #include <cstdint>

@@ -1,8 +1,8 @@
 #pragma once
 #include "fs/data_manager.hpp"
 #include "network/TCPSocket.hpp"
-#include "util/queue.hpp"
-#include "util/bytepipe.hpp"
+#include "concurrency/safe_queue.hpp"
+#include "concurrency/bytepipe.hpp"
 #include "util/exceptions.hpp"
 #include <atomic>
 #include <condition_variable>

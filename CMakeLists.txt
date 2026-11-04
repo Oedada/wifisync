@@ -39,7 +39,7 @@ add_executable(app
   src/core/dif_walker.cpp
   src/core/transport.cpp
   src/core/change_applier.cpp
-  src/util/bytepipe.cpp
+  src/concurrency/bytepipe.cpp
   src/network/broadcasts.cpp
   src/network/session.cpp
   src/network/TCPSocket.cpp
@@ -50,8 +50,8 @@ add_executable(app
   src/crypto/hash.cpp
   src/fs/environment.cpp
   src/fs/snapshot.cpp
-  src/util/init.cpp
-  src/util/utils.cpp
+  src/concurrency/init.cpp
+  src/concurrency/utils.cpp
   src/fs/data_manager.cpp
 )
 

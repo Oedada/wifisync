@@ -35,15 +35,25 @@ UdpBroadcast::UdpBroadcast(int port) : broadcast_port(port) {
     local_addr.sin_family = AF_INET;
     local_addr.sin_port = htons(broadcast_port);
     local_addr.sin_addr.s_addr = INADDR_ANY;
+    // for binding two sockets on one addr
+    int enable = 1;
+    if (setsockopt(broadcast_sock, SOL_SOCKET, SO_REUSEADDR, &enable,
+                   sizeof(enable)) < 0) {
+        throw std::runtime_error("Can't set SO_REUSEADDR");
+    }
     // bind
     if (bind(broadcast_sock, (sockaddr *)&local_addr, sizeof(local_addr)) !=
         0) {
         throw std::runtime_error("Can't bind broadcast sock to addr");
     }
     // enable broadcast
-    int enable = 1;
+    enable = 1;
     setsockopt(broadcast_sock, SOL_SOCKET, SO_BROADCAST, &enable,
                sizeof(enable));
+}
+
+std::map<std::string, DeviceData> UdpBroadcast::get_devices() {
+    return found_devices.get_all();
 }
 
 bool UdpBroadcast::check_recv(int timeout) {
@@ -56,7 +66,7 @@ bool UdpBroadcast::check_recv(int timeout) {
             throw std::runtime_error("Udp socket error");
         } else if (pfd.revents & POLLIN) {
             return true;
-        } else{
+        } else {
             return false;
         }
     } else if (ret == 0) {
@@ -103,8 +113,6 @@ bool UdpBroadcast::recv_msg(const int &timeout, sockaddr_in &addr,
     return true;
 }
 
-// крч тут поток полностью зависает до следующего сообщения,хз, можно в другой
-// поток вынеси чистку, можно просто переложить
 void UdpBroadcast::process() {
     std::chrono::steady_clock::time_point last_send =
         std::chrono::steady_clock::now();
@@ -114,15 +122,23 @@ void UdpBroadcast::process() {
     while (true) {
         auto keys = found_devices.keys();
         for (auto key : keys) {
-            if (std::chrono::steady_clock::now() -
-                    found_devices.get(key)->last_seen >
+            auto device = found_devices.get(key).value_or(DeviceData{
+                .addr = sockaddr_in{},
+                .name = "this isn't normal",
+                .last_seen =
+                    (steady::now() -
+                     std::chrono::seconds(
+                         constants::EXPIRE_DEVICE_MILLISECOND_TIME + 1))});
+            if (std::chrono::steady_clock::now() - device.last_seen >
                 std::chrono::seconds(constants::TIMEOUT_TIME)) {
                 found_devices.erase(key);
             }
             nearest_expseen =
-                std::min(nearest_expseen, found_devices.get(key)->last_seen);
+                std::min(nearest_expseen, device.last_seen);
         }
-        if(steady::now() >= last_send + std::chrono::milliseconds(constants::SEND_MILLISECOND_INTERVAL)){
+        if (steady::now() >=
+            last_send + std::chrono::milliseconds(
+                            constants::SEND_MILLISECOND_INTERVAL)) {
             send_msg(BroadcastMsg);
             last_send = steady::now();
         }
@@ -142,12 +158,15 @@ void UdpBroadcast::process() {
         if (msg_received) {
             bool is_valid_msg = check_msg(msg, uuid, name);
             if (is_valid_msg) {
-                if (!found_devices.contains(uuid) && uuid != dm.get_uuid()) {
-                    found_devices.set(
-                        uuid, DeviceData{.addr = addr,
-                                         .name = name,
-                                         .last_seen =
-                                             std::chrono::steady_clock::now()});
+                if (!found_devices.contains(uuid)) {
+                    if (uuid != dm.get_uuid()) {
+                        found_devices.set(
+                            uuid,
+                            DeviceData{.addr = addr,
+                                       .name = name,
+                                       .last_seen =
+                                           std::chrono::steady_clock::now()});
+                    }
                 } else {
                     found_devices.set(uuid,
                                       DeviceData{.addr = addr,
@@ -159,14 +178,16 @@ void UdpBroadcast::process() {
     }
 }
 
-void UdpBroadcast::send_msg(const std::string &msg){
-    auto sent = sendto(broadcast_sock, msg.data(), msg.size(), 0, reinterpret_cast<sockaddr*>(&broadcast_addr), sizeof(broadcast_addr));
-    if(sent < 0){
+void UdpBroadcast::send_msg(const std::string &msg) {
+    auto sent = sendto(broadcast_sock, msg.data(), msg.size(), 0,
+                       reinterpret_cast<sockaddr *>(&broadcast_addr),
+                       sizeof(broadcast_addr));
+    if (sent < 0) {
         int error = errno;
         switch (error) {
-            case EBADF:
-            case EFAULT:
-            case EINVAL:
+        case EBADF:
+        case EFAULT:
+        case EINVAL:
             throw std::runtime_error("Lol kek some error in send udp socket");
         }
     }
@@ -220,7 +241,6 @@ bool UdpBroadcast::is_ready_to_recv() {
     }
     return false;
 }
-
 
 //----------------//
 // Ip calculating //

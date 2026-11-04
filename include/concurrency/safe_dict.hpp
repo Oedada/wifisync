@@ -15,6 +15,7 @@ template <typename T> class SafeDict {
     std::optional<T> get(const std::string &key);
     bool contains(const std::string &key);
     bool erase(const std::string &key);
+    std::map<std::string, T> get_all();
 };
 template <typename T> 
 void SafeDict<T>::set(std::string key, T val){
@@ -54,3 +55,8 @@ bool SafeDict<T>::erase(const std::string &key){
     return dict.erase(key) > 0;
 }
 
+template<typename T>
+std::map<std::string, T> SafeDict<T>::get_all(){
+    std::lock_guard<std::mutex> lock(mtx);
+    return dict;
+}
