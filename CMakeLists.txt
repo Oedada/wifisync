@@ -50,8 +50,8 @@ add_executable(app
   src/crypto/hash.cpp
   src/fs/environment.cpp
   src/fs/snapshot.cpp
-  src/concurrency/init.cpp
-  src/concurrency/utils.cpp
+  src/utils/init.cpp
+  src/utils/utils.cpp
   src/fs/data_manager.cpp
 )
 

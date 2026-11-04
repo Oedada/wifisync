@@ -152,7 +152,6 @@ bool TCPSocket::receive(void *data, size_t size, bool non_block) {
     if (non_block) {
         if (pipe.size() >= size) {
             std::memcpy(data, pipe.eat(size).data(), size);
-            logmsg("Received");
             return true;
         } else {
             return false;

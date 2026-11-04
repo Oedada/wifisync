@@ -8,6 +8,7 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
+#include <string>
 
 namespace fs = std::filesystem;
 

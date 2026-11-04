@@ -25,7 +25,6 @@ DataManager::DataManager() {
 
 void DataManager::save_config() {
     json out = config;
-    logmsg(out.dump(4));
     std::ofstream fout = FileAccess::get_fout(constants::paths::config);
     fout << out.dump(4);
 }
