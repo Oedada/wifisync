@@ -173,9 +173,8 @@ void Session::process_cmd() {
     }
 }
 
-bool Session::push_msg(BigMsg msg) { return send_queue.push(msg); }
+bool Session::push_msg(std::variant<SmallMsg, BigMsg> msg) { return send_queue.push(msg); }
 
-bool Session::push_msg(SmallMsg msg) { return send_queue.push(msg); }
 
 void Session::process_msg() {
     while (state.load() != State::Closed && state.load() != State::Error) {

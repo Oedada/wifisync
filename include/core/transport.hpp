@@ -1,9 +1,12 @@
 #pragma once
 
 #include "network/TCPSocket.hpp"
+#include "network/session.hpp"
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <nlohmann/json_fwd.hpp>
+#include <optional>
 #include <variant>
 
 using json = nlohmann::json;
@@ -62,10 +65,11 @@ struct RUnit{
 
 class Transport{
     private:
-        TCPSocket sock;
         void walk_unit(void (*emit)(RUnit&), fs::path parent_path, json &dif_sector, std::vector<fs::path> &conflicts);
+        std::function<bool (std::variant<SmallMsg, BigMsg>)> sendf;
+        std::function<std::vector<std::byte> (uint64_t)> recvf;
     public:
-        Transport(TCPSocket s);
+        Transport(const std::function<bool (std::variant<SmallMsg, BigMsg>)>& send, const std::function<std::vector<std::byte> (uint64_t)>& recv);
         void send(SUnit u);
         void set(RUnit &u);
         std::vector<fs::path> walk_received(void (*emit)(RUnit&));

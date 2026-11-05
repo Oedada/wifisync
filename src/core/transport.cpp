@@ -3,6 +3,7 @@
 #include "fs/environment.hpp"
 #include "network/TCPSocket.hpp"
 #include "util/constants.hpp"
+#include <functional>
 #include <cstdint>
 #include <iostream>
 #include <netinet/in.h>
@@ -12,7 +13,10 @@
 
 using json = nlohmann::json;
 
-Transport::Transport(TCPSocket s) : sock(std::move(s)) {}
+Transport::Transport(const std::function<bool (std::variant<SmallMsg, BigMsg>)>& send, const std::function<std::vector<std::byte> (uint64_t)>& recv){
+    sendf = send;
+    recvf = recv;
+}
 
 std::ostream &operator<<(std::ostream &stream, RUnit u) {
     stream << "Modify Type: " << modify_to_string[u.mt] << "\n";
@@ -42,9 +46,13 @@ std::ostream &operator<<(std::ostream &stream, SUnit u) {
     return stream;
 }
 
+void send_string_with_size(std::string s){
+    sendf()
+}
+
 void Transport::send(SUnit u) {
-    sock.send(modify_to_string[u.mt]);
-    sock.send(unit_type_to_string[u.ut]);
+    sendf(modify_to_string[u.mt]);
+    sendf(unit_type_to_string[u.ut]);
     sock.smart_send_msg(u.name);
     if (u.mt != ModifyType::Deleted) {
         if (u.ut == UnitType::File) {
