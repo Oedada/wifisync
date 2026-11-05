@@ -65,23 +65,29 @@ void DifWork::shift_snapshots() {
             cur_snapshot.rm_unit(path);
         }
     }
-    if (!fs::exists(last_shapshot_path)) {
-        fs::copy_file(cur_snapshot_path, last_shapshot_path,
-                      fs::copy_options::overwrite_existing);
+    FileAccess::get_fout(constants::paths::data::current_snapshot)
+        << cur_snapshot.json_tree;
+    if (!FileAccess::is_file(cur_snapshot_path)) {
+        logmsg(std::string(cur_snapshot_path));
+        FileAccess::get_fout(last_shapshot_path) << FileAccess::get_fin(cur_snapshot_path).rdbuf();
     }
 }
 
 void DifWork::calculate_dif() {
-    Snapshot last_snapshot(FileAccess::read_json(constants::paths::data::last_snapshot));
-    Snapshot cur_snapshot(FileAccess::read_json(constants::paths::data::current_snapshot));
+    Snapshot last_snapshot(
+        FileAccess::read_json(constants::paths::data::last_snapshot));
+    Snapshot cur_snapshot(
+        FileAccess::read_json(constants::paths::data::current_snapshot));
     DataManager dm;
     if (dm.devices.get_device(other_uuid).is_first) {
         Difference dif({}, cur_snapshot.json_tree);
-        FileAccess::write_json(constants::paths::data::difference, dif.calculate_difference());
+        FileAccess::write_json(constants::paths::data::difference,
+                               dif.calculate_difference());
         dm.devices.set_is_first(other_uuid, false);
     } else {
         Difference dif(last_snapshot.json_tree, cur_snapshot.json_tree);
-        FileAccess::write_json(constants::paths::data::difference,dif.calculate_difference());
+        FileAccess::write_json(constants::paths::data::difference,
+                               dif.calculate_difference());
     }
     json difference = FileAccess::read_json(constants::paths::data::difference);
     for (const auto &[key, val] : difference.items()) {

@@ -21,8 +21,8 @@ void ExtendedSend::send_string_with_size(std::string s) {
     sendf(s);
 }
 
-void ExtendedSend::send_file(fs::path file_path){
-    if(!fs::is_regular_file(file_path)){
+void ExtendedSend::send_file(fs::path file_path) {
+    if (!fs::is_regular_file(file_path)) {
         throw std::runtime_error("Path isn't file");
     }
     std::ifstream fin(file_path, std::ios::binary);
@@ -51,7 +51,7 @@ uint64_t ExtendedRecv::recv_int() {
 
 std::string ExtendedRecv::recv_string_with_size() {
     uint64_t data_size = recv_int();
-    if (data_size > constants::MAX_ALLOWED_SIZE || data_size < 0) {
+    if (data_size > constants::MAX_ALLOWED_SIZE || data_size <= 0) {
         throw std::runtime_error("Invalide message size");
     }
     auto buf = recvf(data_size);
@@ -76,10 +76,9 @@ void ExtendedRecv::recv_file(std::ofstream &fout) {
     }
 }
 
-Transport::Transport(
-    const std::function<bool(std::variant<SmallMsg, BigMsg>)> &send,
-    const std::function<std::vector<std::byte>(uint64_t)> &recv)
-    : sendf(send), recvf(recv), es(send), er(recv) {}
+Transport::Transport(std::function<bool(std::variant<SmallMsg, BigMsg>)> send,
+                     std::function<std::vector<std::byte>(uint64_t)> recv)
+    : sendf(send), recvf(recv), es(sendf), er(recvf) {}
 
 std::ostream &operator<<(std::ostream &stream, RUnit u) {
     stream << "Modify Type: " << modify_to_string[u.mt] << "\n";
@@ -122,7 +121,7 @@ void Transport::send(SUnit u) {
     }
 }
 
-void ExtendedRecv::recv_file(fs::path file_path){
+void ExtendedRecv::recv_file(fs::path file_path) {
     std::ofstream fout(file_path, std::ios::binary);
     recv_file(fout);
 }

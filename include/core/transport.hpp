@@ -55,11 +55,11 @@ struct RUnit {
 
 class ExtendedSend {
   private:
-    const std::function<bool(std::variant<SmallMsg, BigMsg>)> &sendf;
+    std::function<bool(std::variant<SmallMsg, BigMsg>)> sendf;
 
   public:
     ExtendedSend(
-        const std::function<bool(std::variant<SmallMsg, BigMsg>)> &send)
+        std::function<bool(std::variant<SmallMsg, BigMsg>)> send)
         : sendf(send) {}
     void send_string_with_size(std::string s);
     void send_file(std::ifstream &fin);
@@ -68,10 +68,10 @@ class ExtendedSend {
 
 class ExtendedRecv {
   private:
-    const std::function<std::vector<std::byte>(uint64_t)> &recvf;
+    std::function<std::vector<std::byte>(uint64_t)> recvf;
 
   public:
-    ExtendedRecv(const std::function<std::vector<std::byte>(uint64_t)> &recv)
+    ExtendedRecv(std::function<std::vector<std::byte>(uint64_t)> recv)
         : recvf(recv) {}
     uint64_t recv_int();
     std::string recv_string_with_size();
@@ -89,8 +89,8 @@ class Transport {
     ExtendedRecv er;
 
   public:
-    Transport(const std::function<bool(std::variant<SmallMsg, BigMsg>)> &send,
-              const std::function<std::vector<std::byte>(uint64_t)> &recv);
+    Transport(std::function<bool(std::variant<SmallMsg, BigMsg>)> send,
+              std::function<std::vector<std::byte>(uint64_t)> recv);
     void send(SUnit u);
     void set(RUnit &u);
     std::vector<fs::path> walk_received(void (*emit)(RUnit &));

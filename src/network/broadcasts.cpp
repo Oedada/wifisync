@@ -107,7 +107,6 @@ bool UdpBroadcast::recv_msg(const int &timeout, sockaddr_in &addr,
         msg = "";
     } else {
         addr = sender;
-        logmsg(buf);
         // TODO: не самая надёжная схема читать строку из сырых байтов, может и
         // не сработать, но нужно ли это фиксить - вопрос
         msg = std::string(buf.begin(), buf.begin() + recieved);
