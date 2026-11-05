@@ -4,6 +4,7 @@
 #include "concurrency/safe_queue.hpp"
 #include "concurrency/bytepipe.hpp"
 #include "util/exceptions.hpp"
+#include "util/utils.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
@@ -32,8 +33,12 @@ enum class Step { Initialization, DataTransfering, Finalization, Stopped };
 
 class SmallMsg {
   public:
-    SmallMsg(std::string msg) : msg(msg) {}
-    std::string msg;
+    SmallMsg(const std::string msg) : msg(reinterpret_cast<const std::byte*>(msg.data()), reinterpret_cast<const std::byte*>(msg.data() + msg.size())){}
+    SmallMsg(std::span<std::byte> msg) : msg(msg.data(), msg.data() + msg.size()) {}
+    SmallMsg(uint64_t msg) : msg(sizeof(msg)){
+      toBytes(msg, reinterpret_cast<unsigned char*>(this->msg.data()));
+    }
+    std::vector<std::byte> msg;
 };
 
 class BigMsg {
@@ -92,7 +97,6 @@ class Session {
     void process();
     bool is_stopped();
     bool set_cmd(Cmd cmd);
-    bool push_msg(SmallMsg msg);
-    bool push_msg(BigMsg msg);
+    bool push_msg(std::variant<SmallMsg, BigMsg> msg);
     std::vector<std::byte> recv_bytes(uint64_t n);
 };
