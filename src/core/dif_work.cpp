@@ -4,6 +4,7 @@
 #include "fs/environment.hpp"
 #include "fs/snapshot.hpp"
 #include "util/constants.hpp"
+#include "util/utils.hpp"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -95,7 +96,7 @@ void DifWork::calculate_dif() {
             continue;
         }
         if (!dm.devices.get_device(other_uuid).paths_pairs.contains(key)) {
-            std::cerr << "There is no corresponding path to the path " << key;
+            logerr("There is no corresponding path to the path " + key);
             difference[key]["/other_path"] = "/None";
         } else {
             difference[key]["/other_path"] =

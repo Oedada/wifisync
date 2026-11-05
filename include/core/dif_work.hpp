@@ -18,8 +18,6 @@ class DifWork{
 
     public:
         DifWork(std::string uuid);
-        void add_to_sync(fs::path path);
-        void add_to_ignore(fs::path path);
         void shift_snapshots();
         void calculate_dif();
 

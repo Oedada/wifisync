@@ -114,7 +114,7 @@ int DeviceManager::set_path_pair_to_device(const std::string &uuid,
     if (!devices.contains(uuid)) {
         return 1;
     }
-    devices[uuid].paths_pairs[own_path.string()] = other_path.string();
+    devices[uuid].paths_pairs[fs::weakly_canonical(own_path).string()] = fs::weakly_canonical(other_path).string();
     save_devices();
     return 0;
 }

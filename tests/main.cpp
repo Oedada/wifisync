@@ -2,6 +2,7 @@
 #include "core/dif_walker.hpp"
 #include "core/dif_work.hpp"
 #include "core/transport.hpp"
+#include "fs/data_manager.hpp"
 #include "fs/environment.hpp"
 #include "network/TCPSocket.hpp"
 #include "network/server.hpp"
@@ -23,9 +24,25 @@ using json = nlohmann::json;
 std::vector<fs::path> conflicts;
 
 void full_sync(TCPSocket sock, Direction dir, std::string uuid) {
+    DataManager dm;
     conflicts = {};
     logmsg("Calculating difference...");
     DifWork difwork(uuid);
+    if (dir == Direction::Incoming) {
+        dm.devices.add_device("35d04bbc-aa32-4972-8871-2f9082b5c940", "oedada2");
+        dm.add_watch("./dryrun.d/server/test/");
+        int res = dm.devices.set_path_pair_to_device(
+            "35d04bbc-aa32-4972-8871-2f9082b5c940", "./dryrun.d/server/test/",
+            "./dryrun.d/client/test/");
+        logmsg(std::to_string(res));
+    } else {
+        dm.devices.add_device("b3efc590-c5d0-45bd-adf0-0cc94207cb54", "oedada1");
+        dm.add_watch(fs::path("./dryrun.d/client/test/"));
+        int res = dm.devices.set_path_pair_to_device(
+            "b3efc590-c5d0-45bd-adf0-0cc94207cb54", "./dryrun.d/client/test/",
+            "./dryrun.d/server/test/");
+        logmsg(std::to_string(res));
+    }
     difwork.shift_snapshots();
     difwork.calculate_dif();
     json dif = FileAccess::read_json(constants::paths::data::difference);
@@ -35,7 +52,7 @@ void full_sync(TCPSocket sock, Direction dir, std::string uuid) {
     std::thread session_thread(&Session::process, &session);
     if (dir == Direction::Incoming) {
         session.set_cmd(Cmd::Accept);
-    } 
+    }
     session.push_msg(count_subelements(dif));
     Transport tr(
         std::bind(&Session::push_msg, &session, std::placeholders::_1),

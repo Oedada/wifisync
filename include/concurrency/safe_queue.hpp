@@ -15,7 +15,7 @@ private:
     bool closed = false;
 
 public:
-    SafeQueue<T>(std::condition_variable &on_readable) : on_readable(on_readable){}
+    SafeQueue(std::condition_variable &on_readable) : on_readable(on_readable){}
     std::optional<T> get();
     bool push(T val);
     void close();
