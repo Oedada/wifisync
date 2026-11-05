@@ -4,6 +4,7 @@
 #include "concurrency/safe_queue.hpp"
 #include "concurrency/bytepipe.hpp"
 #include "util/exceptions.hpp"
+#include "util/utils.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
@@ -34,7 +35,9 @@ class SmallMsg {
   public:
     SmallMsg(const std::string msg) : msg(reinterpret_cast<const std::byte*>(msg.data()), reinterpret_cast<const std::byte*>(msg.data() + msg.size())){}
     SmallMsg(std::span<std::byte> msg) : msg(msg.data(), msg.data() + msg.size()) {}
-    SmallMsg(uint64_t msg) : msg(){}
+    SmallMsg(uint64_t msg) : msg(sizeof(msg)){
+      toBytes(msg, reinterpret_cast<unsigned char*>(this->msg.data()));
+    }
     std::vector<std::byte> msg;
 };
 
