@@ -1,0 +1,13 @@
+{
+    "name": "oedadalaptop",
+    "paths": {
+        "ignore": [],
+        "watch": [
+            "./dryrun.d/client/test/",
+            "./dryrun.d/client/test/",
+            "./dryrun.d/client/test/",
+            "./dryrun.d/client/test/"
+        ]
+    },
+    "uuid": "35d04bbc-aa32-4972-8871-2f9082b5c940"
+}

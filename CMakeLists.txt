@@ -5,7 +5,7 @@ project(wifisync VERSION 0.1.0)
 # set(CMAKE_CXX_COMPILER clang++)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
+add_subdirectory(external)
 include(FetchContent)
 
 fetchcontent_declare(
@@ -28,26 +28,31 @@ add_compile_options(
     -Wall
     -Wextra
     -pthread
+    -fsanitize=address,undefined -g
 )
-
-file(GLOB SRCS src/*.cpp)
+add_link_options(-fsanitize=address,undefined)
 
 add_executable(app 
-  src/broadcasts.cpp
-  src/difference.cpp
-  src/environment.cpp
-  src/files_opers.cpp
-  src/hash.cpp
-  src/init.cpp
-  src/http_server.cpp
-  src/server.cpp
-  src/TCPSocket.cpp
-  src/threads.cpp
-  src/utils.cpp
-  src/dif_work.cpp
-  src/transport.cpp
-  src/dif_walker.cpp
-  src/change_applier.cpp
+  tests/main.cpp
+  src/core/difference.cpp
+  src/core/dif_work.cpp
+  src/core/dif_walker.cpp
+  src/core/transport.cpp
+  src/core/change_applier.cpp
+  src/concurrency/bytepipe.cpp
+  src/network/broadcasts.cpp
+  src/network/session.cpp
+  src/network/TCPSocket.cpp
+  src/network/http_server.cpp
+  src/network/server.cpp
+  src/crypto/ed25519.cpp
+  src/crypto/x25519.cpp
+  src/crypto/hash.cpp
+  src/fs/environment.cpp
+  src/fs/snapshot.cpp
+  src/utils/init.cpp
+  src/utils/utils.cpp
+  src/fs/data_manager.cpp
 )
 
 target_include_directories(app PRIVATE
@@ -56,12 +61,10 @@ target_include_directories(app PRIVATE
 
 find_package(OpenSSL REQUIRED)
 
-find_package(SDL2 REQUIRED)
-
 target_link_libraries(app PRIVATE
     OpenSSL::SSL
     OpenSSL::Crypto
-    SDL2::SDL2
     httplib
     stduuid
+    uWebSockets
 )
