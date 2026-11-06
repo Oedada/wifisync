@@ -53,8 +53,12 @@ std::ofstream FileAccess::get_fout(std::string_view path) {
     return FileAccess::get_fout(path, false);
 }
 
+bool FileAccess::exists(std::string_view rel_path){
+    return fs::exists(get_and_create_if_not_exists_base_path() / rel_path);
+}
+
 bool FileAccess::is_directory(std::string_view rel_path) {
-    if (!fs::exists(get_and_create_if_not_exists_base_path() / rel_path)) {
+    if (!exists(rel_path)) {
         return false;
     }
     return fs::is_directory(get_and_create_if_not_exists_base_path() /
@@ -62,7 +66,7 @@ bool FileAccess::is_directory(std::string_view rel_path) {
 }
 
 bool FileAccess::is_file(std::string_view rel_path) {
-    if (!fs::exists(get_and_create_if_not_exists_base_path() / rel_path)) {
+    if (!exists(rel_path)) {
         return false;
     }
     return fs::is_regular_file(get_and_create_if_not_exists_base_path() /

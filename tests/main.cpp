@@ -28,21 +28,22 @@ void full_sync(TCPSocket sock, Direction dir, std::string uuid) {
     conflicts = {};
     logmsg("Calculating difference...");
     DifWork difwork(uuid);
+    std::string other_uuid;
+    std::string own_path;
+    std::string other_path;
     if (dir == Direction::Incoming) {
-        dm.devices.add_device("35d04bbc-aa32-4972-8871-2f9082b5c940", "oedada2");
-        dm.add_watch("./dryrun.d/server/test/");
-        int res = dm.devices.set_path_pair_to_device(
-            "35d04bbc-aa32-4972-8871-2f9082b5c940", "./dryrun.d/server/test/",
-            "./dryrun.d/client/test/");
-        logmsg(std::to_string(res));
+        other_uuid = "35d04bbc-aa32-4972-8871-2f9082b5c940";
+        own_path = "./dryrun.d/server/test/";
+        other_path = "./dryrun.d/client/test/";
     } else {
-        dm.devices.add_device("b3efc590-c5d0-45bd-adf0-0cc94207cb54", "oedada1");
-        dm.add_watch(fs::path("./dryrun.d/client/test/"));
-        int res = dm.devices.set_path_pair_to_device(
-            "b3efc590-c5d0-45bd-adf0-0cc94207cb54", "./dryrun.d/client/test/",
-            "./dryrun.d/server/test/");
-        logmsg(std::to_string(res));
+        other_uuid = "b3efc590-c5d0-45bd-adf0-0cc94207cb54";
+        other_path = "./dryrun.d/server/test/";
+        own_path = "./dryrun.d/client/test/";
     }
+    dm.devices.add_device(other_uuid, "oedada1");
+    int res = dm.devices.set_path_pair_to_device(
+        other_uuid, own_path,
+        other_path);
     difwork.shift_snapshots();
     difwork.calculate_dif();
     json dif = FileAccess::read_json(constants::paths::data::difference);

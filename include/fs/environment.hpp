@@ -10,6 +10,7 @@
 namespace FileAccess {
 bool is_directory(std::string_view rel_path);
 bool is_file(std::string_view rel_path);
+bool exists(std::string_view rel_path);
 void mkdir(std::string_view rel_path);
 std::ifstream get_fin(std::string_view rel_path);
 std::ifstream get_fin(std::string_view rel_path, bool bin_mode);

@@ -4,6 +4,14 @@
         "ignore": [],
         "watch": [
             "./dryrun.d/server/test/",
+            "./dryrun.d/server/test/",
+            "./dryrun.d/server/test/",
+            "./dryrun.d/server/test/",
+            "./dryrun.d/server/test/",
+            "./dryrun.d/server/test/",
+            "./dryrun.d/server/test/",
+            "./dryrun.d/server/test/",
+            "./dryrun.d/server/test/",
             "./dryrun.d/server/test/"
         ]
     },

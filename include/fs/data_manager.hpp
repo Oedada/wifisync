@@ -29,7 +29,7 @@ struct Device {
     std::map<std::string, std::string> paths_pairs = {};
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Device, name, paths_pairs)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Device, name, paths_pairs, is_first)
 
 class DeviceManager {
   private:

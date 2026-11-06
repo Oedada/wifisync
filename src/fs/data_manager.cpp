@@ -69,11 +69,18 @@ DeviceManager::DeviceManager() {
     try {
         devices =
             json::parse(FileAccess::get_fin(constants::paths::data::devices));
+        std::cout << json::parse(FileAccess::get_fin(constants::paths::data::devices));
+        for(auto d: devices){
+            std::cout << d.second.is_first;
+        }
     } catch (const json::parse_error) {
+        logerr("Json read error");
         devices = {};
     } catch (fs::filesystem_error) {
+        logerr("Json read error");
         devices = {};
     } catch (std::runtime_error &e){
+        logerr("Json read error");
         devices = {};
     }
 }
@@ -88,6 +95,7 @@ void DeviceManager::add_device(const std::string &uuid,
     Device d;
     d.name = name;
     devices[uuid] = d;
+    d.is_first = true;
     save_devices();
 }
 
@@ -101,6 +109,7 @@ bool DeviceManager::is_first(const std::string &uuid){
 
 void DeviceManager::set_is_first(const std::string &uuid, const bool is_first){
     devices[uuid].is_first = is_first;
+    save_devices();
 }
 
 void DeviceManager::rm_device(const std::string &uuid) {
