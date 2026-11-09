@@ -65,6 +65,7 @@ void full_sync(TCPSocket sock, Direction dir, std::string uuid) {
     Transport tr(
         std::bind(&Session::push_msg, &session, std::placeholders::_1),
         std::bind(&Session::recv_bytes, &session, std::placeholders::_1));
+    // 
     if (dir == Direction::Incoming) {
         dw.walk([&](SUnit u) { tr.send(u); });
         conflicts = tr.walk_received(ChangeApplier::apply_runit);
@@ -82,12 +83,12 @@ void server() {
     while (!server.is_ready_to_accept())
         ;
     full_sync(server.accept_conn(), Direction::Incoming,
-              "e5420172-9517-4b5c-93a8-d6cf576a4d41");
+              "27a4003e-c292-4db4-b953-b9238c1fd2e9");
 }
 
 void client() {
     full_sync(client_connect(addr_from_ip_and_port("127.0.0.1", 12345)),
-              Direction::Outgoing, "c3d78a40-b38d-464f-835d-8c4e7df390eb");
+              Direction::Outgoing, "f655377f-0c5b-411f-9b2c-17d90097ca08");
 }
 
 std::vector<std::string> check_args(int argc, char *argv[]) {

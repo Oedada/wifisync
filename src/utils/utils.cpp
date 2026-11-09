@@ -103,3 +103,7 @@ void logmsg(std::vector<std::byte> msg){
     }
     std::cout << "]\n";
 }
+
+void logmsg(uint64_t msg){
+    std::cout << "[Dev]: " + std::to_string(msg) << std::endl;
+}

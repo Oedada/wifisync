@@ -143,6 +143,7 @@ void Transport::set(RUnit &u) {
 
 std::vector<fs::path> Transport::walk_received(void (*emit)(RUnit &)) {
     uint64_t count_roots = er.recv_int();
+    logmsg(count_roots);
     json dif = FileAccess::read_json(constants::paths::data::difference);
     std::vector<fs::path> conflicts;
     for (uint64_t i = 0; i < count_roots; i++) {

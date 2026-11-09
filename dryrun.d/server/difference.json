@@ -1,1 +1,7 @@
-null
+{
+    "/home/oedada/dev/Projects/apps/Wifisync/wifisync/dryrun.d/server/test": {
+        "/mtype": "M",
+        "/other_path": "/home/oedada/dev/Projects/apps/Wifisync/wifisync/dryrun.d/client/test",
+        "/type": "dir"
+    }
+}

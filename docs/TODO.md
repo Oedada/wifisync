@@ -1,0 +1,1 @@
+- Надо переделать ExtendedSend send_file на BigMSg, сейчас о на Small
