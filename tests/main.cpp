@@ -10,6 +10,7 @@
 #include "util/constants.hpp"
 #include "util/init.hpp"
 #include "util/utils.hpp"
+#include <algorithm>
 #include <functional>
 #include <nlohmann/json.hpp>
 #include <openssl/rand.h>
@@ -24,26 +25,32 @@ using json = nlohmann::json;
 std::vector<fs::path> conflicts;
 
 void full_sync(TCPSocket sock, Direction dir, std::string uuid) {
-    DataManager dm;
     conflicts = {};
     logmsg("Calculating difference...");
     DifWork difwork(uuid);
-    std::string other_uuid;
     std::string own_path;
     std::string other_path;
     if (dir == Direction::Incoming) {
-        other_uuid = "35d04bbc-aa32-4972-8871-2f9082b5c940";
         own_path = "./dryrun.d/server/test/";
         other_path = "./dryrun.d/client/test/";
     } else {
-        other_uuid = "b3efc590-c5d0-45bd-adf0-0cc94207cb54";
         other_path = "./dryrun.d/server/test/";
         own_path = "./dryrun.d/client/test/";
     }
-    dm.devices.add_device(other_uuid, "oedada1");
-    int res = dm.devices.set_path_pair_to_device(
-        other_uuid, own_path,
-        other_path);
+    auto devices_uuid = DataManager::devices.uuid_list();
+    if (std::find(devices_uuid.begin(), devices_uuid.end(), uuid) ==
+        devices_uuid.end()) {
+        DataManager::devices.add_device(uuid, "oedada1");
+    }
+    auto watched_paths = DataManager::list_watch();
+    if(std::find(watched_paths.begin(), watched_paths.end(), own_path) == watched_paths.end()){
+        DataManager::add_watch(own_path);
+    }
+    DataManager::add_watch(own_path);
+    if (!DataManager::devices.get_device(uuid).paths_pairs.contains(own_path)) {
+        DataManager::devices.set_path_pair_to_device(uuid, own_path,
+                                                     other_path);
+    }
     difwork.shift_snapshots();
     difwork.calculate_dif();
     json dif = FileAccess::read_json(constants::paths::data::difference);
@@ -75,12 +82,12 @@ void server() {
     while (!server.is_ready_to_accept())
         ;
     full_sync(server.accept_conn(), Direction::Incoming,
-              "35d04bbc-aa32-4972-8871-2f9082b5c940");
+              "e5420172-9517-4b5c-93a8-d6cf576a4d41");
 }
 
 void client() {
     full_sync(client_connect(addr_from_ip_and_port("127.0.0.1", 12345)),
-              Direction::Outgoing, "b3efc590-c5d0-45bd-adf0-0cc94207cb54");
+              Direction::Outgoing, "c3d78a40-b38d-464f-835d-8c4e7df390eb");
 }
 
 std::vector<std::string> check_args(int argc, char *argv[]) {

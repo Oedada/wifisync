@@ -19,7 +19,7 @@ Session::Session(TCPSocket s, Direction dir)
     } else {
         state = State::SendingRequest;
     }
-    std::string uuid_and_name = dm.get_uuid() + ":" + dm.get_name();
+    std::string uuid_and_name = DataManager::get_uuid() + ":" + DataManager::get_name();
     AcceptMessage = constants::StaticAcceptRequest + std::string(":") +
                     uuid_and_name + constants::MessageEndSymbol;
     DenyMessage = constants::StaticDenyRequest + std::string(":") +

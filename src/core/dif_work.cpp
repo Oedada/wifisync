@@ -13,10 +13,10 @@
 namespace fs = std::filesystem;
 
 DifWork::DifWork(std::string uuid) : other_uuid(uuid) {
-    own_name = dm.get_name();
-    own_uuid = dm.get_uuid();
-    detecting_paths = dm.list_watch();
-    ignoring_paths = dm.list_ignore();
+    own_name = DataManager::get_name();
+    own_uuid = DataManager::get_uuid();
+    detecting_paths = DataManager::list_watch();
+    ignoring_paths = DataManager::list_ignore();
 }
 /**
 
@@ -86,7 +86,7 @@ void DifWork::shift_snapshots() {
         << cur_snapshot.json_tree;
     //если прошлого не было, записыываем текущий в него 
     if (!FileAccess::is_file(last_shapshot_path)) {
-        logmsg(std::string(cur_snapshot_path));
+        logmsg("Прошлого не было");
         FileAccess::get_fout(last_shapshot_path)
             << json({});
     }
@@ -97,14 +97,13 @@ void DifWork::calculate_dif() {
         FileAccess::read_json(constants::paths::data::last_snapshot));
     Snapshot cur_snapshot(
         FileAccess::read_json(constants::paths::data::current_snapshot));
-    DataManager dm;
     //если устройство впервые подключаем, то скидываем ему всё, то есть сравниваем всё из current
-    if (dm.devices.get_device(other_uuid).is_first) {
+    if (DataManager::devices.get_device(other_uuid).is_first) {
         logmsg("first");
         Difference dif({}, cur_snapshot.json_tree);
         FileAccess::write_json(constants::paths::data::difference,
                                dif.calculate_difference());
-        dm.devices.set_is_first(other_uuid, false);
+        DataManager::devices.set_is_first(other_uuid, false);
     } else {
         Difference dif(last_snapshot.json_tree, cur_snapshot.json_tree);
         FileAccess::write_json(constants::paths::data::difference,
@@ -115,12 +114,12 @@ void DifWork::calculate_dif() {
         if (key == constants::JSON_FIELD_NAME_TYPE) {
             continue;
         }
-        if (!dm.devices.get_device(other_uuid).paths_pairs.contains(key)) {
+        if (!DataManager::devices.get_device(other_uuid).paths_pairs.contains(key)) {
             logerr("There is no corresponding path to the path " + key);
             difference[key]["/other_path"] = "/None";
         } else {
             difference[key]["/other_path"] =
-                dm.devices.get_device(other_uuid).paths_pairs[key];
+                DataManager::devices.get_device(other_uuid).paths_pairs[key];
         }
     }
     FileAccess::write_json(constants::paths::data::difference, difference);

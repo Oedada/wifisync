@@ -21,7 +21,7 @@ UdpBroadcast::UdpBroadcast(int port) : broadcast_port(port) {
     if (broadcast_sock < 0) {
         throw std::runtime_error("Can't create socket");
     }
-    std::string uuid_and_name = dm.get_uuid() + ":" + dm.get_name();
+    std::string uuid_and_name = DataManager::get_uuid() + ":" + DataManager::get_name();
     BroadcastMsg = constants::StaticBroadcastMessage + uuid_and_name;
     // get own addr and broadcast addr
     if (!get_own_and_brcast_addr(own_addr, broadcast_addr)) {
@@ -160,7 +160,7 @@ void UdpBroadcast::process() {
             bool is_valid_msg = check_msg(msg, uuid, name);
             if (is_valid_msg) {
                 if (!found_devices.contains(uuid)) {
-                    if (uuid != dm.get_uuid()) {
+                    if (uuid != DataManager::get_uuid()) {
                         found_devices.set(
                             uuid,
                             DeviceData{.addr = addr,

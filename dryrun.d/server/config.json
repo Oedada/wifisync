@@ -4,16 +4,8 @@
         "ignore": [],
         "watch": [
             "./dryrun.d/server/test/",
-            "./dryrun.d/server/test/",
-            "./dryrun.d/server/test/",
-            "./dryrun.d/server/test/",
-            "./dryrun.d/server/test/",
-            "./dryrun.d/server/test/",
-            "./dryrun.d/server/test/",
-            "./dryrun.d/server/test/",
-            "./dryrun.d/server/test/",
             "./dryrun.d/server/test/"
         ]
     },
-    "uuid": "b3efc590-c5d0-45bd-adf0-0cc94207cb54"
+    "uuid": "f655377f-0c5b-411f-9b2c-17d90097ca08"
 }

@@ -29,7 +29,6 @@ class UdpBroadcast {
     ~UdpBroadcast();
 
   private:
-    DataManager dm;
     // messages
     std::string BroadcastMsg;
     SafeDict<DeviceData> found_devices;

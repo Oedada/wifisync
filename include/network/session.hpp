@@ -57,7 +57,6 @@ struct HelloMsg{
 class Session {
   private:
     // storages
-    DataManager dm;
     TCPSocket sock;
     SafeQueue<std::variant<SmallMsg, BigMsg>> send_queue;
     BytePipe recv_pipe;
