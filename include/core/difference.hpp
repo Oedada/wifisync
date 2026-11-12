@@ -21,12 +21,12 @@ class Difference{
         std::filesystem::path fname;
         std::array<unsigned char, constants::HASH_BYTE_LENGTH> get_hash_from_json(const json &j);
         bool equal_unit(const json& l,const json& c);
-        std::vector<std::string> get_keys(json j);
-        std::vector<std::string> exluding_dif(std::vector<std::string> m1, std::vector<std::string> m2);
-        std::vector<std::string> exluding_dif(json m1, json m2);
-        std::vector<std::string> shared_elements(std::vector<std::string> m1, std::vector<std::string> m2);
-        std::vector<std::string> shared_elements(json m1, json m2);
-        void calc_dif(json lj, json cj, json &res, std::string res_name);
+        std::vector<std::string> get_keys(const json& j);
+        std::vector<std::string> exluding_dif(const std::vector<std::string> &m1, const std::vector<std::string>& m2);
+        std::vector<std::string> exluding_dif(const json &m1, const json &m2);
+        std::vector<std::string> shared_elements(const std::vector<std::string> &m1, const std::vector<std::string> &m2);
+        std::vector<std::string> shared_elements(const json &m1, const json &m2);
+        void calc_dif(const json &lj, const json &cj, json &res, const std::string &res_name);
     friend std::ostream& operator<<(std::ostream & os, const Difference obj);
 };
 
