@@ -187,6 +187,8 @@ void Session::process_msg() {
                         auto small_msg = std::get<SmallMsg>(msg);
                         try {
                             sock.send(small_msg.msg);
+                            logmsg("Message: ");
+                            logmsg(small_msg.msg.size());
                         } catch (const NetworkError &err) {
                             saved_error = Error::NetworkError;
                             close();

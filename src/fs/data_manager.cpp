@@ -124,9 +124,6 @@ void DeviceManager::load_devices() {
     try {
         devices =
             json::parse(FileAccess::get_fin(constants::paths::data::devices));
-        for (auto d : devices) {
-            std::cout << d.second.is_first;
-        }
     } catch (const json::parse_error) {
         logerr("Json read error");
         devices = {};

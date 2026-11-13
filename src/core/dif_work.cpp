@@ -122,6 +122,5 @@ void DifWork::calculate_dif() {
                 DataManager::devices.get_device(other_uuid).paths_pairs[key];
         }
     }
-    std::cout << difference << "\n";
     FileAccess::write_json(constants::paths::data::difference, difference);
 }

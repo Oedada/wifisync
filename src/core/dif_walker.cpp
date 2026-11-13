@@ -21,6 +21,7 @@ void DifWalker::walk(const std::function<void(SUnit)>& emit){
         if(dif.at(key).at(constants::JSON_FIELD_NAME_OTHER_PATH) == "/None"){
             continue;
         }
+        logmsg("Walking: " + key);
         walk_node(dif.at(key), dif.at(key).at(constants::JSON_FIELD_NAME_OTHER_PATH), key, emit);
     }
 }
@@ -55,6 +56,7 @@ void walk_added_directory_in_fs(fs::path cur_path, const std::function<void(SUni
 void DifWalker::walk_node(const json &node,const std::string &node_name, const fs::path &cur_path, const std::function<void(SUnit)>& emit){
     SUnit sunit = json_to_sunit(node, cur_path, node_name);
     emit(sunit);
+    std::cout << sunit << "\n";
     if(sunit.ut == UnitType::Directory){
         if(sunit.mt == ModifyType::Modified){
             for(const auto &[key, val] : node.items()){

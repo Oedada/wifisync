@@ -48,6 +48,30 @@ void TCPSocket::receive_callback(
             if (pfd.revents & POLLNVAL) {
                 closed.store(true);
                 throw SystemMethodError("Invalid file descriptor");
+            } else if (pfd.revents & (POLLIN | POLLHUP)) {
+                std::byte buf[constants::BUFFER_SIZE];
+                ssize_t n = ::recv(sock, buf, constants::BUFFER_SIZE, 0);
+
+                if (n > 0) {
+                    pipe.write(std::span<std::byte>(buf, n));
+                    callback(n);
+                } else if (n == 0) {
+                    closed.store(true);
+                    throw ConnectionClosedError(
+                        "Connection close by other side");
+                } else {
+                    switch (errno) {
+                    case EINTR:
+                    case EWOULDBLOCK:
+#if EWOULDBLOCK != EAGAIN
+                    case EAGAIN:
+#endif
+                        continue;
+                    default:
+                        closed.store(true);
+                        throw std::runtime_error("Error while reading socket");
+                    }
+                }
             } else if (pfd.revents & POLLERR) {
                 int err = 0;
                 socklen_t len = sizeof(err);
@@ -75,37 +99,14 @@ void TCPSocket::receive_callback(
                     closed.store(true);
                     throw TCPSocketError("Unknow by getsockopt socker error");
                 }
-            } else if (pfd.revents & (POLLIN | POLLHUP)) {
-                std::byte buf[constants::BUFFER_SIZE];
-                ssize_t n = ::recv(sock, buf, constants::BUFFER_SIZE, 0);
-                if (n > 0) {
-                    pipe.write(std::span<std::byte>(buf, n));
-                    callback(n);
-                } else if (n == 0) {
-                    closed.store(true);
-                    throw ConnectionClosedError("Connection close by other side");
-                } else {
-                    switch (errno) {
-                    case EINTR:
-                    case EWOULDBLOCK:
-#if EWOULDBLOCK != EAGAIN
-                    case EAGAIN:
-#endif
-                        continue;
-                    default:
-                        closed.store(true);
-                        throw std::runtime_error("Error while reading socket");
-                    }
-                }
             }
         }
     }
 }
-
 void TCPSocket::send(std::span<const std::byte> data) {
     check_sock();
     size_t sended = 0;
-    if(data.size() == 0){
+    if (data.size() == 0) {
         return;
     }
     while (sended != data.size() && !closed.load()) {
@@ -113,8 +114,9 @@ void TCPSocket::send(std::span<const std::byte> data) {
                         MSG_NOSIGNAL);
         if (n > 0) {
             sended += n;
-        } else if (n == 0){
-            throw UntypicalError("Socket send return 0 when the size of data isn't 0");
+        } else if (n == 0) {
+            throw UntypicalError(
+                "Socket send return 0 when the size of data isn't 0");
         } else if (n < 0) {
             int error = errno;
             switch (error) {
@@ -131,14 +133,16 @@ void TCPSocket::send(std::span<const std::byte> data) {
 #endif
                 continue;
             default:
-                throw SystemMethodError("Unknow method error while sending data");
+                throw SystemMethodError(
+                    "Unknow method error while sending data");
             }
         }
     }
 }
 
 void TCPSocket::send(const std::string &buf) {
-    send(std::span<const std::byte>(reinterpret_cast<const std::byte*>(buf.data()), buf.size()));
+    send(std::span<const std::byte>(
+        reinterpret_cast<const std::byte *>(buf.data()), buf.size()));
 }
 
 void TCPSocket::send(const uint64_t &buf) {
@@ -161,7 +165,6 @@ bool TCPSocket::receive(void *data, size_t size, bool non_block) {
         return true;
     }
 }
-
 
 void TCPSocket::receive(void *data, size_t size) { receive(data, size, false); }
 
@@ -198,7 +201,8 @@ void TCPSocket::send_file(std::ifstream &fin, uint64_t file_size) {
     std::vector<std::byte> buf(constants::BUFFER_SIZE);
     send(file_size);
     if (fin) {
-        while (fin.read(reinterpret_cast<char*>(buf.data()), buf.size()) || fin.gcount() > 0) {
+        while (fin.read(reinterpret_cast<char *>(buf.data()), buf.size()) ||
+               fin.gcount() > 0) {
             send(std::span<std::byte>(buf.data(), buf.size()));
         }
     } else {
