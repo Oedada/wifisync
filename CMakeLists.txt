@@ -8,6 +8,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_subdirectory(external)
 include(FetchContent)
 
+FetchContent_Declare(
+  spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog.git
+  GIT_TAG v1.17.0
+)
+
+FetchContent_MakeAvailable(spdlog)
+
 fetchcontent_declare(
   httplib
   GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
@@ -66,5 +74,6 @@ target_link_libraries(app PRIVATE
     OpenSSL::Crypto
     httplib
     stduuid
+    spdlog
     uWebSockets
 )

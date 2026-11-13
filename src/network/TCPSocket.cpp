@@ -99,10 +99,33 @@ void TCPSocket::receive_callback(
                     closed.store(true);
                     throw TCPSocketError("Unknow by getsockopt socker error");
                 }
+            } else if (pfd.revents & (POLLIN | POLLHUP)) {
+                std::byte buf[constants::BUFFER_SIZE];
+                ssize_t n = ::recv(sock, buf, constants::BUFFER_SIZE, 0);
+                if (n > 0) {
+                    pipe.write(std::span<std::byte>(buf, n));
+                    callback(n);
+                } else if (n == 0) {
+                    closed.store(true);
+                    throw ConnectionClosedError("Connection close by other side");
+                } else {
+                    switch (errno) {
+                    case EINTR:
+                    case EWOULDBLOCK:
+#if EWOULDBLOCK != EAGAIN
+                    case EAGAIN:
+#endif
+                        continue;
+                    default:
+                        closed.store(true);
+                        throw std::runtime_error("Error while reading socket");
+                    }
+                }
             }
         }
     }
 }
+
 void TCPSocket::send(std::span<const std::byte> data) {
     check_sock();
     size_t sended = 0;
