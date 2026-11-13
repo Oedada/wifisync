@@ -49,7 +49,7 @@ Difference::get_hash_from_json(const json &j) {
 }
 
 bool Difference::equal_unit(const json &l, const json &c) {
-    return l.at(constants::JSON_FIELD_NAME_HASH) == l.at(constants::JSON_FIELD_NAME_HASH);
+    return l.at(constants::JSON_FIELD_NAME_HASH) == c.at(constants::JSON_FIELD_NAME_HASH);
     //старый способ
     return get_hash_from_json(l) == get_hash_from_json(c);
 }

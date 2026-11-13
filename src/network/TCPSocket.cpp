@@ -48,6 +48,31 @@ void TCPSocket::receive_callback(
             if (pfd.revents & POLLNVAL) {
                 closed.store(true);
                 throw SystemMethodError("Invalid file descriptor");
+            } else if (pfd.revents & (POLLIN | POLLHUP)) {
+                std::byte buf[constants::BUFFER_SIZE];
+                ssize_t n = ::recv(sock, buf, constants::BUFFER_SIZE, 0);
+                if (n > 0) {
+                    pipe.write(std::span<std::byte>(buf, n));
+                    logmsg("Received: ");
+                    logmsg(std::vector(buf, buf+constants::BUFFER_SIZE));
+                    callback(n);
+                } else if (n == 0) {
+                    closed.store(true);
+                    throw ConnectionClosedError("Connection close by other side");
+                } else {
+                    switch (errno) {
+                    case EINTR:
+                    case EWOULDBLOCK:
+#if EWOULDBLOCK != EAGAIN
+                    case EAGAIN:
+#endif
+                        continue;
+                    default:
+                        closed.store(true);
+                        throw std::runtime_error("Error while reading socket");
+                    }
+                }
+            }
             } else if (pfd.revents & POLLERR) {
                 int err = 0;
                 socklen_t len = sizeof(err);
@@ -75,29 +100,6 @@ void TCPSocket::receive_callback(
                     closed.store(true);
                     throw TCPSocketError("Unknow by getsockopt socker error");
                 }
-            } else if (pfd.revents & (POLLIN | POLLHUP)) {
-                std::byte buf[constants::BUFFER_SIZE];
-                ssize_t n = ::recv(sock, buf, constants::BUFFER_SIZE, 0);
-                if (n > 0) {
-                    pipe.write(std::span<std::byte>(buf, n));
-                    callback(n);
-                } else if (n == 0) {
-                    closed.store(true);
-                    throw ConnectionClosedError("Connection close by other side");
-                } else {
-                    switch (errno) {
-                    case EINTR:
-                    case EWOULDBLOCK:
-#if EWOULDBLOCK != EAGAIN
-                    case EAGAIN:
-#endif
-                        continue;
-                    default:
-                        closed.store(true);
-                        throw std::runtime_error("Error while reading socket");
-                    }
-                }
-            }
         }
     }
 }

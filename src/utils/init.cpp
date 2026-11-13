@@ -1,12 +1,20 @@
 #include "util/init.hpp"
+#include "spdlog/sinks/stdout_color_sinks.h"
 #include "util/utils.hpp"
 #include "fs/data_manager.hpp"
 #include "util/utils.hpp"
 #include "uuid.h"
 #include <fstream>
+#include <memory>
 #include <random>
+#include <spdlog/spdlog.h>
 
 using json = nlohmann::json;
+
+void register_loggers(){
+    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    console_sink->set_pattern("(%l)[%H:%M:%S] [%n, %t] %v");
+}
 
 void calculate_and_set_uuid() {
     if (DataManager::get_uuid() == "") {
