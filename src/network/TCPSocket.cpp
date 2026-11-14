@@ -51,14 +51,16 @@ void TCPSocket::receive_callback(
             } else if (pfd.revents & (POLLIN | POLLHUP)) {
                 std::byte buf[constants::BUFFER_SIZE];
                 ssize_t n = ::recv(sock, buf, constants::BUFFER_SIZE, 0);
-
                 if (n > 0) {
                     pipe.write(std::span<std::byte>(buf, n));
+                    std::cout << "Received: ";
+                    logmsg(std::vector<std::byte>(buf, buf+constants::BUFFER_SIZE));
                     callback(n);
                 } else if (n == 0) {
                     closed.store(true);
-                    throw ConnectionClosedError(
-                        "Connection close by other side");
+                    callback(0);
+                    // throw ConnectionClosedError(
+                        // "Connection close by other side");
                 } else {
                     switch (errno) {
                     case EINTR:

@@ -45,6 +45,15 @@ void Session::process() {
     }
 }
 
+void Session::sock_recv_callback(uint64_t n){
+    if(n == 0){
+        std::lock_guard<std::mutex> lock(mtx);
+        state = State::Closed;
+        process_cmd_cv.notify_one();
+        process_msg_cv.notify_one();
+    }
+}
+
 void Session::send_accept(int timeout) {
     logmsg("accept sended");
     sock.send(AcceptMessage);
@@ -187,8 +196,8 @@ void Session::process_msg() {
                         auto small_msg = std::get<SmallMsg>(msg);
                         try {
                             sock.send(small_msg.msg);
-                            logmsg("Message: ");
-                            logmsg(small_msg.msg.size());
+                            std::cout << "Send : ";
+                            logmsg(small_msg.msg);
                         } catch (const NetworkError &err) {
                             saved_error = Error::NetworkError;
                             close();

@@ -56,7 +56,6 @@ void walk_added_directory_in_fs(fs::path cur_path, const std::function<void(SUni
 void DifWalker::walk_node(const json &node,const std::string &node_name, const fs::path &cur_path, const std::function<void(SUnit)>& emit){
     SUnit sunit = json_to_sunit(node, cur_path, node_name);
     emit(sunit);
-    std::cout << sunit << "\n";
     if(sunit.ut == UnitType::Directory){
         if(sunit.mt == ModifyType::Modified){
             for(const auto &[key, val] : node.items()){
