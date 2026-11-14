@@ -1,6 +1,7 @@
 #include "network/TCPSocket.hpp"
 #include "util/constants.hpp"
 #include "util/exceptions.hpp"
+#include "util/logger.hpp"
 #include "util/utils.hpp"
 #include <asm-generic/socket.h>
 #include <cerrno>
@@ -13,6 +14,7 @@
 #include <iostream>
 #include <netinet/in.h>
 #include <poll.h>
+#include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <string>
 #include <sys/poll.h>
@@ -32,35 +34,44 @@ void TCPSocket::check_sock() {
 
 void TCPSocket::receive_callback(
     std::function<void(uint64_t received_count)> callback) {
+    spdlog::get("session")->debug("ID: Receive thread");
     while (!closed.load()) {
         pollfd pfd{};
         pfd.fd = sock;
         pfd.events = POLLIN;
+        spdlog::get("tcpsocket")->trace("Poll socket");
         auto ret = poll(&pfd, 1, -1);
+        spdlog::get("tcpsocket")->trace("Socket polled");
         if (ret == -1) {
-            if (errno == EINTR) {
+            int error = errno;
+            if (error == EINTR) {
                 continue;
             } else {
                 closed.store(true);
+                spdlog::get("tcpsocket")->error("Pol error");
                 throw SystemMethodError("Poll error check the code!!");
             }
         } else if (ret > 0) {
             if (pfd.revents & POLLNVAL) {
+                if(closed.load() == true){
+                    break;
+                }
                 closed.store(true);
+                spdlog::get("tcpsocket")->error("Invalid file descriptor");
                 throw SystemMethodError("Invalid file descriptor");
             } else if (pfd.revents & (POLLIN | POLLHUP)) {
                 std::byte buf[constants::BUFFER_SIZE];
                 ssize_t n = ::recv(sock, buf, constants::BUFFER_SIZE, 0);
                 if (n > 0) {
                     pipe.write(std::span<std::byte>(buf, n));
-                    std::cout << "Received: ";
-                    logmsg(std::vector<std::byte>(buf, buf+constants::BUFFER_SIZE));
+                    spdlog::get("tcpsocket")
+                        ->trace("Received: {}", std::vector(buf, buf + n));
                     callback(n);
                 } else if (n == 0) {
                     closed.store(true);
                     callback(0);
                     // throw ConnectionClosedError(
-                        // "Connection close by other side");
+                    // "Connection close by other side");
                 } else {
                     switch (errno) {
                     case EINTR:
@@ -109,7 +120,8 @@ void TCPSocket::receive_callback(
                     callback(n);
                 } else if (n == 0) {
                     closed.store(true);
-                    throw ConnectionClosedError("Connection close by other side");
+                    throw ConnectionClosedError(
+                        "Connection close by other side");
                 } else {
                     switch (errno) {
                     case EINTR:
@@ -139,6 +151,8 @@ void TCPSocket::send(std::span<const std::byte> data) {
                         MSG_NOSIGNAL);
         if (n > 0) {
             sended += n;
+            spdlog::get("tcpsocket")
+                ->trace("Sended: {}", std::vector(data.begin(), data.end()));
         } else if (n == 0) {
             throw UntypicalError(
                 "Socket send return 0 when the size of data isn't 0");
@@ -325,14 +339,15 @@ std::string TCPSocket::ip() {
 void TCPSocket::close() {
     closed.store(true);
     if (sock >= 0) {
-        logwarn("Socket closed");
+        spdlog::get("tcpsocket")->warn("Socket closed");
+        ::shutdown(sock, SHUT_RDWR);
         ::close(sock);
     }
 }
 
 TCPSocket::~TCPSocket() {
     if (sock >= 0) {
-        logwarn("Socket closed");
+        spdlog::get("tcpsocket")->warn("Socket closed");
         ::close(sock);
     }
 }

@@ -7,6 +7,7 @@
 #include "network/TCPSocket.hpp"
 #include "network/server.hpp"
 #include "network/session.hpp"
+#include <spdlog/spdlog.h>
 #include "util/constants.hpp"
 #include "util/init.hpp"
 #include "util/utils.hpp"
@@ -26,7 +27,7 @@ std::vector<fs::path> conflicts;
 
 void full_sync(TCPSocket sock, Direction dir, std::string uuid) {
     conflicts = {};
-    logmsg("Calculating difference...");
+    spdlog::get("main")->info("Calculating difference");
     DifWork difwork(uuid);
     std::string own_path;
     std::string other_path;
@@ -43,7 +44,8 @@ void full_sync(TCPSocket sock, Direction dir, std::string uuid) {
         DataManager::devices.add_device(uuid, "oedada1");
     }
     auto watched_paths = DataManager::list_watch();
-    if(std::find(watched_paths.begin(), watched_paths.end(), own_path) == watched_paths.end()){
+    if (std::find(watched_paths.begin(), watched_paths.end(), own_path) ==
+        watched_paths.end()) {
         DataManager::add_watch(own_path);
     }
     DataManager::add_watch(own_path);
@@ -55,7 +57,7 @@ void full_sync(TCPSocket sock, Direction dir, std::string uuid) {
     difwork.calculate_dif();
     json dif = FileAccess::read_json(constants::paths::data::difference);
     DifWalker dw(dif);
-    logmsg("Starting synchronization...");
+    spdlog::get("main")->info("Starting synchronization");
     Session session(std::move(sock), dir);
     std::thread session_thread(&Session::process, &session);
     if (dir == Direction::Incoming) {
@@ -65,7 +67,7 @@ void full_sync(TCPSocket sock, Direction dir, std::string uuid) {
     Transport tr(
         std::bind(&Session::push_msg, &session, std::placeholders::_1),
         std::bind(&Session::recv_bytes, &session, std::placeholders::_1));
-    // 
+    //
     if (dir == Direction::Incoming) {
         dw.walk([&](SUnit u) { tr.send(u); });
         conflicts = tr.walk_received(ChangeApplier::apply_runit);
@@ -76,11 +78,11 @@ void full_sync(TCPSocket sock, Direction dir, std::string uuid) {
     difwork.shift_snapshots();
     std::cout << "Conflicts: ";
     print_vector(conflicts);
-    // session.set_cmd(Cmd::Disconnect);
-    // if(session_thread.joinable()){
-        // session_thread.join();
-    // }
-    logmsg("Successfully sync!");
+    session.set_cmd(Cmd::Disconnect);
+    if (session_thread.joinable()) {
+        session_thread.join();
+    }
+    spdlog::get("main")->info("Succesfully sync!");
 }
 
 void server() {
@@ -106,8 +108,9 @@ std::vector<std::string> check_args(int argc, char *argv[]) {
 
 int main(int argc, char *argv[]) {
     init();
+    spdlog::set_level(spdlog::level::trace);
     if (is_dryrun()) {
-        logmsg("dry run");
+        spdlog::get("main")->info("dryrun");
     }
     auto args = check_args(argc, argv);
     if (args.empty()) {

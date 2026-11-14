@@ -2,6 +2,7 @@
 #include "core/dif_walker.hpp"
 #include "fs/environment.hpp"
 #include "util/constants.hpp"
+#include "util/logger.hpp"
 #include "util/utils.hpp"
 #include <cstdint>
 #include <filesystem>
@@ -11,6 +12,7 @@
 #include <netinet/in.h>
 #include <nlohmann/json_fwd.hpp>
 #include <openssl/conf.h>
+#include <spdlog/spdlog.h>
 #include <stdexcept>
 #include <sys/socket.h>
 
@@ -20,7 +22,6 @@ void ExtendedSend::send_string_with_size(std::string s) {
     sendf(s.size());
     sendf(s);
 }
-
 
 void ExtendedSend::send_file(fs::path file_path) {
     if (!fs::is_regular_file(file_path)) {
@@ -42,7 +43,6 @@ void ExtendedSend::send_file(fs::path file_path) {
 
         file.read(reinterpret_cast<char *>(buffer.data()), n);
         buffer.resize(file.gcount());
-        logmsg(file.gcount());
         return buffer;
     }));
 }
@@ -83,34 +83,6 @@ Transport::Transport(std::function<bool(std::variant<SmallMsg, BigMsg>)> send,
                      std::function<std::vector<std::byte>(uint64_t)> recv)
     : sendf(send), recvf(recv), es(sendf), er(recvf) {}
 
-std::ostream &operator<<(std::ostream &stream, RUnit u) {
-    stream << "Modify Type: " << modify_to_string[u.mt] << "\n";
-    stream << "Unit Type: " << unit_type_to_string[u.ut] << "\n";
-    stream << "Unit Path: " << u.path << "\n";
-    if (u.mt != ModifyType::Deleted) {
-        if (u.ut == UnitType::Directory) {
-            stream << "Count sub-units: "
-                   << std::get<DirData>(u.data).subunits_number << "\n";
-        } else {
-            stream << "Function for call to recv" << "\n";
-        }
-    }
-    return stream;
-}
-
-std::ostream &operator<<(std::ostream &stream, SUnit u) {
-    stream << "Modify Type: " << modify_to_string[u.mt] << "\n";
-    stream << "Unit Type: " << unit_type_to_string[u.ut] << "\n";
-    stream << "Unit Name: " << u.name << "\n";
-    if (u.ut == UnitType::Directory) {
-        stream << "Count sub-units: "
-               << std::get<DirData>(u.data).subunits_number << "\n";
-    } else {
-        stream << "File path: " << std::get<FileData>(u.data).file_path << "\n";
-    }
-    return stream;
-}
-
 void Transport::send(SUnit u) {
     sendf(SmallMsg(modify_to_string[u.mt]));
     sendf(unit_type_to_string[u.ut]);
@@ -122,6 +94,7 @@ void Transport::send(SUnit u) {
             sendf(std::get<DirData>(u.data).subunits_number);
         }
     }
+    spdlog::get("transport")->trace("Sended: {}", u);
 }
 
 void ExtendedRecv::recv_file(fs::path file_path) {
@@ -142,6 +115,7 @@ void Transport::set(RUnit &u) {
             u.data = DirData{er.recv_int()};
         }
     }
+    spdlog::get("transport")->trace("Received: {}", u);
 }
 
 std::vector<fs::path> Transport::walk_received(void (*emit)(RUnit &)) {
