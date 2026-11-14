@@ -21,15 +21,12 @@ void ExtendedSend::send_string_with_size(std::string s) {
     sendf(s);
 }
 
+
 void ExtendedSend::send_file(fs::path file_path) {
     if (!fs::is_regular_file(file_path)) {
         throw std::runtime_error("Path isn't file");
     }
     std::ifstream fin(file_path, std::ios::binary);
-    send_file(fin);
-}
-
-void ExtendedSend::send_file(std::ifstream &fin) {
     if (!fin) {
         throw std::runtime_error("Input stream doesn't correct");
     }
@@ -37,11 +34,17 @@ void ExtendedSend::send_file(std::ifstream &fin) {
     uint64_t size = fin.tellg();
     fin.seekg(0, std::ios::beg);
     sendf(size);
-    std::vector<std::byte> buf(constants::BUFFER_SIZE);
-    while (fin.read(reinterpret_cast<char *>(buf.data()), buf.size()) ||
-           fin.gcount() > 0) {
-        sendf(std::span<std::byte>(buf.data(), buf.size()));
-    }
+    fin.close();
+    sendf(BigMsg([file_path](uint64_t n) -> std::vector<std::byte> {
+        static std::ifstream file(file_path, std::ios::binary);
+
+        std::vector<std::byte> buffer(n);
+
+        file.read(reinterpret_cast<char *>(buffer.data()), n);
+        buffer.resize(file.gcount());
+        logmsg(file.gcount());
+        return buffer;
+    }));
 }
 
 uint64_t ExtendedRecv::recv_int() {

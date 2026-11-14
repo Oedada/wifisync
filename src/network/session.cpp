@@ -208,10 +208,12 @@ void Session::process_msg() {
                             // закрыть всё что нужно
                         }
                     } else {
+                        logmsg("Send big msg");
                         auto big_msg = std::get<BigMsg>(msg);
                         std::vector<std::byte> buf;
                         while ((buf = big_msg.read(constants::BUFFER_SIZE))
                                    .size() != 0) {
+                            logmsg(buf.size());
                             sock.send(
                                 std::span<std::byte>(buf.data(), buf.size()));
                         }

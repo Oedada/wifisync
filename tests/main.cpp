@@ -76,6 +76,10 @@ void full_sync(TCPSocket sock, Direction dir, std::string uuid) {
     difwork.shift_snapshots();
     std::cout << "Conflicts: ";
     print_vector(conflicts);
+    // session.set_cmd(Cmd::Disconnect);
+    // if(session_thread.joinable()){
+        // session_thread.join();
+    // }
     logmsg("Successfully sync!");
 }
 
