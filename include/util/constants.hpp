@@ -29,6 +29,7 @@ inline const std::string UNIT_TYPE_FILE = "file";
 
 /// network
 const int SLEEP_TIME = 200000;
+const int request_timeout_milliseconds = 3000;
 const int TIMEOUT_TIME = 3;
 const int EXPIRE_DEVICE_MILLISECOND_TIME = 3000;
 const int SEND_MILLISECOND_INTERVAL = 700;

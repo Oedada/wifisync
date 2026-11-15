@@ -53,7 +53,7 @@ void TCPSocket::receive_callback(
             }
         } else if (ret > 0) {
             if (pfd.revents & POLLNVAL) {
-                if(closed.load() == true){
+                if (closed.load() == true) {
                     break;
                 }
                 closed.store(true);
@@ -80,8 +80,11 @@ void TCPSocket::receive_callback(
                     case EAGAIN:
 #endif
                         continue;
+                    case EBADF:
+                        continue;
                     default:
                         closed.store(true);
+                        spdlog::get("tcpsocket")->error(errno);
                         throw std::runtime_error("Error while reading socket");
                     }
                 }
@@ -111,29 +114,6 @@ void TCPSocket::receive_callback(
                 } else if (err == 0) {
                     closed.store(true);
                     throw TCPSocketError("Unknow by getsockopt socker error");
-                }
-            } else if (pfd.revents & (POLLIN | POLLHUP)) {
-                std::byte buf[constants::BUFFER_SIZE];
-                ssize_t n = ::recv(sock, buf, constants::BUFFER_SIZE, 0);
-                if (n > 0) {
-                    pipe.write(std::span<std::byte>(buf, n));
-                    callback(n);
-                } else if (n == 0) {
-                    closed.store(true);
-                    throw ConnectionClosedError(
-                        "Connection close by other side");
-                } else {
-                    switch (errno) {
-                    case EINTR:
-                    case EWOULDBLOCK:
-#if EWOULDBLOCK != EAGAIN
-                    case EAGAIN:
-#endif
-                        continue;
-                    default:
-                        closed.store(true);
-                        throw std::runtime_error("Error while reading socket");
-                    }
                 }
             }
         }
@@ -190,22 +170,17 @@ void TCPSocket::send(const uint64_t &buf) {
     ::send(sock, buf_bytes, sizeof(uint64_t), 0);
 }
 
-bool TCPSocket::receive(void *data, size_t size, bool non_block) {
+bool TCPSocket::receive(void *data, size_t size, long timeout_milliseconds) {
     check_sock();
-    if (non_block) {
-        if (pipe.size() >= size) {
-            std::memcpy(data, pipe.eat(size).data(), size);
-            return true;
-        } else {
-            return false;
-        }
-    } else {
-        std::memcpy(data, pipe.eat(size).data(), size);
-        return true;
+    auto v = pipe.eat(size, timeout_milliseconds);
+    if(v.empty()){
+        return false;
     }
+    std::memcpy(data, v.data(), size);
+    return true;
 }
 
-void TCPSocket::receive(void *data, size_t size) { receive(data, size, false); }
+void TCPSocket::receive(void *data, size_t size) { receive(data, size, -1); }
 
 uint64_t TCPSocket::recv_uint64() {
     unsigned char bytes[sizeof(uint64_t)];
@@ -226,7 +201,7 @@ void TCPSocket::smart_send_msg(const std::string &msg) {
 std::string TCPSocket::smart_recv_msg() {
     check_sock();
     uint64_t data_size = recv_uint64();
-    if (data_size > constants::MAX_ALLOWED_SIZE || data_size < 0) {
+    if (data_size > constants::MAX_ALLOWED_SIZE) {
         throw std::runtime_error("Invalide message size");
     }
     std::string buf;

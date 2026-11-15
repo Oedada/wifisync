@@ -79,9 +79,9 @@ class Session {
     std::string DenyMessage;
     std::string ConnectRequestMessage;
     // methods
-    void send_accept(int timeout);
-    void send_deny(int timeout);
-    void send_request(int timeout);
+    void send_accept();
+    void send_deny();
+    void send_request();
     bool is_got_request(int timeout);
     bool get_access_or_deny(int timeout);
     void close_sock();

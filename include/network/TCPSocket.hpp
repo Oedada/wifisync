@@ -55,7 +55,7 @@ class TCPSocket{
         void receive_callback(std::function<void (uint64_t received_count)> callback);
         uint64_t recv_uint64();
         void receive(void *buf, size_t size);
-        bool receive(void *buf, size_t size, bool non_block);
+        bool receive(void *buf, size_t size, long timeout_milliseconds);
         //recvs
 
         // legacy

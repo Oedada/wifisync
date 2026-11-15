@@ -15,18 +15,18 @@ class BytePipe{
         BytePipe& operator=(const BytePipe &) = delete;
 
         BytePipe(BytePipe &&other) noexcept {
-            buf = other.read(other.size());
+            buf = other.read(other.size(), -1);
         }
 
         BytePipe& operator=(BytePipe &&other) noexcept {
             std::lock_guard<std::mutex> lock(mtx);
             buf.clear();
-            buf = other.read(other.size());
+            buf = other.read(other.size(), -1);
             return *this;
         }
         BytePipe(){};
-        std::vector<std::byte> read(uint64_t n);
-        std::vector<std::byte> eat(uint64_t n);
+        std::vector<std::byte> read(uint64_t n, long timeout_milliseconds);
+        std::vector<std::byte> eat(uint64_t n, long timeout_milliseconds);
         void write(std::span<const std::byte> data);
         bool empty();
         uint64_t size();

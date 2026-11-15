@@ -3,8 +3,8 @@
 #include "util/constants.hpp"
 #include "util/exceptions.hpp"
 #include "util/logger.hpp"
-#include "util/utils.hpp"
 #include <cstdint>
+#include <functional>
 #include <mutex>
 #include <nlohmann/detail/meta/type_traits.hpp>
 #include <spdlog/spdlog.h>
@@ -34,8 +34,9 @@ Session::Session(TCPSocket s, Direction dir)
 void Session::process() {
     process_cmd_thread = std::thread(&Session::process_cmd, this);
     process_msg_thread = std::thread(&Session::process_msg, this);
-    receive_thread =
-        std::thread(&TCPSocket::receive_callback, &sock, [this](uint64_t n) {});
+    receive_thread = std::thread(
+        &TCPSocket::receive_callback, &sock,
+        std::bind(&Session::sock_recv_callback, this, std::placeholders::_1));
     if (process_cmd_thread.joinable()) {
         process_cmd_thread.join();
         spdlog::get("session")->debug("Process cmd thread joined");
@@ -54,16 +55,15 @@ void Session::sock_recv_callback(uint64_t n) {
     if (n == 0) {
         std::lock_guard<std::mutex> lock(mtx);
         state = State::Closed;
-        process_cmd_cv.notify_one();
-        process_msg_cv.notify_one();
+        close();
     }
 }
 
-void Session::send_accept(int timeout) { sock.send(AcceptMessage); }
+void Session::send_accept() { sock.send(AcceptMessage); }
 
-void Session::send_deny(int timeout) { sock.send(DenyMessage); }
+void Session::send_deny() { sock.send(DenyMessage); }
 
-void Session::send_request(int timeout) { sock.send(ConnectRequestMessage); }
+void Session::send_request() { sock.send(ConnectRequestMessage); }
 
 HelloMsg parse_msg(std::string s) {
     HelloMsg hello_msg{};
@@ -89,8 +89,11 @@ bool Session::is_got_request(int timeout) {
     std::string buf;
     char c = 's';
     while (c != constants::MessageEndSymbol) {
-        sock.receive(&c, 1);
-        buf += c;
+        if (sock.receive(&c, 1, timeout)) {
+            buf += c;
+        } else {
+            return false;
+        }
     }
     return parse_msg(buf).msg == constants::StaticConnectRequest;
 }
@@ -99,8 +102,11 @@ bool Session::get_access_or_deny(int timeout) {
     std::string buf;
     char c = 's';
     while (c != constants::MessageEndSymbol) {
-        sock.receive(&c, 1);
-        buf += c;
+        if (sock.receive(&c, 1, timeout)) {
+            buf += c;
+        } else {
+            return false;
+        }
     }
     return accept_or_deny(buf);
 }
@@ -130,6 +136,7 @@ bool Session::set_cmd(Cmd cmd) {
     case Cmd::Idle:
         return false;
     }
+    return false;
 }
 
 void Session::process_cmd() {
@@ -138,7 +145,7 @@ void Session::process_cmd() {
     while (state.load() != State::Closed && state.load() != State::Error) {
         switch (state.load()) {
         case State::Idle:
-            if (is_got_request(0)) {
+            if (is_got_request(constants::request_timeout_milliseconds)) {
                 state.store(State::ReceivedRequest);
                 spdlog::get("session")->info("Received request");
             } else {
@@ -148,11 +155,11 @@ void Session::process_cmd() {
             }
         case State::ReceivedRequest:
             if (command == Cmd::Accept) {
-                send_accept(0);
+                send_accept();
                 spdlog::get("session")->info("Send accept");
                 state.store(State::Connected);
             } else if (command == Cmd::Deny) {
-                send_deny(0);
+                send_deny();
                 spdlog::get("session")->info("Send deny");
                 state.store(State::Denied);
             } else {
@@ -161,12 +168,12 @@ void Session::process_cmd() {
             }
             break;
         case State::SendingRequest:
-            send_request(0);
+            send_request();
             spdlog::get("session")->info("Request sended");
             state.store(State::WaitAnswer);
             break;
         case State::WaitAnswer:
-            if (get_access_or_deny(0)) {
+            if (get_access_or_deny(constants::request_timeout_milliseconds)) {
                 state.store(State::Connected);
                 spdlog::get("session")->info("Connected");
             } else {
@@ -220,12 +227,12 @@ void Session::process_msg() {
                                                           small_msg.msg);
                         } catch (const NetworkError &err) {
                             saved_error = Error::NetworkError;
+                            spdlog::get("session")->error("network error");
                             close();
-                            // закрыть всё что нужно
                         } catch (const ConnectionClosedError &err) {
                             saved_error = Error::ConnectionClosed;
                             close();
-                            // закрыть всё что нужно
+                            spdlog::get("session")->error("connection closed");
                         }
                     } else {
                         spdlog::get("session")->debug("Send BigMsg");
@@ -257,6 +264,7 @@ std::vector<std::byte> Session::recv_bytes(uint64_t n) {
     while (state.load() != State::Closed && state.load() != State::Error) {
         if (state.load() == State::Connected) {
             std::vector<std::byte> buf(n);
+            spdlog::get("session")->trace("Received: {}", buf);
             sock.receive(buf.data(), n);
             return buf;
         } else {
@@ -265,7 +273,7 @@ std::vector<std::byte> Session::recv_bytes(uint64_t n) {
             receive_cv.wait(lock, [&] { return oldState != state.load(); });
         }
     }
-    throw std::runtime_error("lol");
+    return {};
 }
 
 void Session::close() {
